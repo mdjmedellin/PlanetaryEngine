@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+    <None Include="small.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="road_editor.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="road_editor.h" />
+    <ClInclude Include="Application.h" />
+    <ClInclude Include="DrivingLane.h" />
+    <ClInclude Include="DrivingSegment.h" />
+    <ClInclude Include="Intersection.h" />
+    <ClInclude Include="IntersectionConnection.h" />
+    <ClInclude Include="IntersectionDrivingSegment.h" />
+    <ClInclude Include="IntersectionSpline.h" />
+    <ClInclude Include="LaneCluster.h" />
+    <ClInclude Include="LaneNode.h" />
+    <ClInclude Include="Road.h" />
+    <ClInclude Include="RoadPath.h" />
+    <ClInclude Include="RoadSpline.h" />
+    <ClInclude Include="RoadSystem.h" />
+    <ClInclude Include="Vehicle.h" />
+    <ClInclude Include="VehicleManager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="road_editor.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="Application.cpp" />
+    <ClCompile Include="DrivingLane.cpp" />
+    <ClCompile Include="DrivingSegment.cpp" />
+    <ClCompile Include="Intersection.cpp" />
+    <ClCompile Include="IntersectionConnection.cpp" />
+    <ClCompile Include="IntersectionDrivingSegment.cpp" />
+    <ClCompile Include="IntersectionSpline.cpp" />
+    <ClCompile Include="LaneCluster.cpp" />
+    <ClCompile Include="LaneNode.cpp" />
+    <ClCompile Include="Road.cpp" />
+    <ClCompile Include="RoadPath.cpp" />
+    <ClCompile Include="RoadSpline.cpp" />
+    <ClCompile Include="RoadSystem.cpp" />
+    <ClCompile Include="Vehicle.cpp" />
+    <ClCompile Include="VehicleManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="road_editor.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

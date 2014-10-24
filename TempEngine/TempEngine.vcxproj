@@ -98,6 +98,7 @@
     <ClCompile Include="BSPNode2.cpp" />
     <ClCompile Include="BSPNode3.cpp" />
     <ClCompile Include="Bullet.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Capsule2.cpp" />
     <ClCompile Include="Capsule3.cpp" />
     <ClCompile Include="Client.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="BSPNode2.hpp" />
     <ClInclude Include="BSPNode3.hpp" />
     <ClInclude Include="Bullet.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Capsule2.hpp" />
     <ClInclude Include="Capsule3.hpp" />
     <ClInclude Include="Client.hpp" />
