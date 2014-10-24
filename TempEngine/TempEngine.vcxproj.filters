@@ -1,0 +1,550 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="planetaryShader.fragment.glsl">
+      <Filter>UNSORTED</Filter>
+    </None>
+    <None Include="planetaryShaderNoTexture.fragment.glsl">
+      <Filter>UNSORTED</Filter>
+    </None>
+    <None Include="planetaryShader.vertex.glsl">
+      <Filter>UNSORTED</Filter>
+    </None>
+    <None Include="Data\ShaderFiles\framebufferShader.fragment.glsl" />
+    <None Include="Data\ShaderFiles\framebufferShader.vertex.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AABB2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="AABB3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Capsule2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Capsule3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="ConvexPolygon2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="DirectedLineSegment2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Disc2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Triangle3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Triangle2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Sphere3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="LineSegment3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="MathUtilities.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Matrix4X4.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Plane2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Plane3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="BSPNode2.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="BSPNode3.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="DiskFileLoader.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="FileLoader.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="FileManager.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="ioapi.c">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="iowin32.c">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="mztools.c">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="ZipFile.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="ZipFileLoader.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="ZipFileManager.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="zip.c">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="XMLNode.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="unzip.c">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="pugixml.cpp">
+      <Filter>FileManagement</Filter>
+    </ClCompile>
+    <ClCompile Include="Actor.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="ActorData.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="Bullet.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="GameSimulator.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="GameWorld.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="Alarm.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="BitmapFont.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Clock.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandConsoleSystem.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugUtility.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="ErrorReporter.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="EventSystem.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="FloatRange.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="IncludeNetworkingLibraries.cpp">
+      <Filter>Networking</Filter>
+    </ClCompile>
+    <ClCompile Include="IntRange.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="IntVector2.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyPadInputLogger.cpp" />
+    <ClCompile Include="MatrixStack.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryManager.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Mutex.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="MutexLock.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkingObject.cpp">
+      <Filter>Networking</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkPacket.cpp">
+      <Filter>Networking</Filter>
+    </ClCompile>
+    <ClCompile Include="PacketHeader.cpp">
+      <Filter>Networking</Filter>
+    </ClCompile>
+    <ClCompile Include="PredictionNode.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Profile.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="ProfileClock.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Rgba.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderLoader.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="SocketManager.cpp">
+      <Filter>Networking</Filter>
+    </ClCompile>
+    <ClCompile Include="stb_image.c">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureManager.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeUtility.cpp">
+      <Filter>UNSORTED</Filter>
+    </ClCompile>
+    <ClCompile Include="Client.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="AddActorCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="DeathCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="Message.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateActorCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateInputCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="ClockSynchronizationMessage.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="Timeline.cpp">
+      <Filter>SpaceGame</Filter>
+    </ClCompile>
+    <ClCompile Include="AddTimelineActorCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateTimelineStateCommand.cpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderProgram.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="LightManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AABB2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Capsule2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Capsule3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="ConvexPolygon2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectedLineSegment2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Disc2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector4.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Triangle3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Triangle2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Sphere3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LineSegment3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="MathUtilities.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix4X4.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Plane2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Plane3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="BSPNode3.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="BSPNode2.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="DiskFileLoader.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="FileLoader.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="FileManager.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="crypt.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="ZipFileManager.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="ZipFile.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="ZipFileLoader.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="XMLNode.h">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="pugiconfig.hpp">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="pugixml.hpp">
+      <Filter>FileManagement</Filter>
+    </ClInclude>
+    <ClInclude Include="IncludeGL.h" />
+    <ClInclude Include="Actor.h">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="ActorData.h">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="Bullet.h">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="GameSimulator.h">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="GameWorld.h">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="Alarm.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="BitmapFont.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Clock.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="FloatRange.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandConsoleSystem.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugUtility.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="ErrorReporter.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="EventSystem.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="ExplosionFX.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="IncludeNetworkingLibraries.h">
+      <Filter>Networking</Filter>
+    </ClInclude>
+    <ClInclude Include="IntRange.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="IntVector2.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyPadInputLogger.h" />
+    <ClInclude Include="MatrixStack.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryManager.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryUtilities.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Mutex.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="MutexLock.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="NamedProperties.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="NamedProperty.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="NamedPropertyBase.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkingObject.h">
+      <Filter>Networking</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkPacket.h">
+      <Filter>Networking</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketHeader.h">
+      <Filter>Networking</Filter>
+    </ClInclude>
+    <ClInclude Include="PredictionNode.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Profile.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="ProfileClock.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="RandomChoice.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Rgba.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="SelfUnregister.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderLoader.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="SocketManager.h">
+      <Filter>Networking</Filter>
+    </ClInclude>
+    <ClInclude Include="Subscriber.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="SubscriberBase.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureManager.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeUtility.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Vertex.h">
+      <Filter>UNSORTED</Filter>
+    </ClInclude>
+    <ClInclude Include="Client.hpp">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="AddActorCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="DeathCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="LoginCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="Message.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateActorCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="SpaceGameUtilities.hpp">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateInputCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="ClockSynchronizationMessage.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="Timeline.hpp">
+      <Filter>SpaceGame</Filter>
+    </ClInclude>
+    <ClInclude Include="AddTimelineActorCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateTimelineStateCommand.hpp">
+      <Filter>Networking\NetworkMessages</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderProgram.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="LightManager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Math">
+      <UniqueIdentifier>{7ffd783a-bcea-4575-9283-f3a358c7a6ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FileManagement">
+      <UniqueIdentifier>{bc44c5ed-699a-4286-85a7-6d12f4ad2e55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SpaceGame">
+      <UniqueIdentifier>{762d5f50-5cf2-477c-b9e4-725f5b491628}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Networking">
+      <UniqueIdentifier>{e6f56e2c-b168-447e-9c8a-18f6808258a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UNSORTED">
+      <UniqueIdentifier>{303407d0-b8fa-4b8c-bd18-2aae0ee25db6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Networking\NetworkMessages">
+      <UniqueIdentifier>{ac5f71ba-2361-47cd-ad6a-22fe0481b3fc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

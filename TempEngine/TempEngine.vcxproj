@@ -1,0 +1,272 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A7E15F09-E6E7-4C0D-9CB1-A84B0C242263}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>TempEngine</RootNamespace>
+    <ProjectName>PlanetaryEngineV01</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>MYDEBUG_;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\libs\zlib128-dll\include;..\libs\glew-1.9.0\include\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\libs\zlib128-dll\include;..\libs\glew-1.9.0\include\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Data\ShaderFiles\framebufferShader.fragment.glsl" />
+    <None Include="Data\ShaderFiles\framebufferShader.vertex.glsl" />
+    <None Include="planetaryShader.fragment.glsl" />
+    <None Include="planetaryShader.vertex.glsl" />
+    <None Include="planetaryShaderNoTexture.fragment.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AABB2.cpp" />
+    <ClCompile Include="AABB3.cpp" />
+    <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="ActorData.cpp" />
+    <ClCompile Include="AddActorCommand.cpp" />
+    <ClCompile Include="AddTimelineActorCommand.cpp" />
+    <ClCompile Include="Alarm.cpp" />
+    <ClCompile Include="BitmapFont.cpp" />
+    <ClCompile Include="BSPNode2.cpp" />
+    <ClCompile Include="BSPNode3.cpp" />
+    <ClCompile Include="Bullet.cpp" />
+    <ClCompile Include="Capsule2.cpp" />
+    <ClCompile Include="Capsule3.cpp" />
+    <ClCompile Include="Client.cpp" />
+    <ClCompile Include="ClientCommand.cpp" />
+    <ClCompile Include="Clock.cpp" />
+    <ClCompile Include="ClockSynchronizationMessage.cpp" />
+    <ClCompile Include="CommandConsoleSystem.cpp" />
+    <ClCompile Include="ConvexPolygon2.cpp" />
+    <ClCompile Include="DeathCommand.cpp" />
+    <ClCompile Include="DebugUtility.cpp" />
+    <ClCompile Include="DirectedLineSegment2.cpp" />
+    <ClCompile Include="Disc2.cpp" />
+    <ClCompile Include="DiskFileLoader.cpp" />
+    <ClCompile Include="ErrorReporter.cpp" />
+    <ClCompile Include="EventSystem.cpp" />
+    <ClCompile Include="FileLoader.cpp" />
+    <ClCompile Include="FileManager.cpp" />
+    <ClCompile Include="FloatRange.cpp" />
+    <ClCompile Include="GameSimulator.cpp" />
+    <ClCompile Include="GameWorld.cpp" />
+    <ClCompile Include="GeneralCommand.cpp" />
+    <ClCompile Include="IncludeNetworkingLibraries.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="LightManager.cpp" />
+    <ClCompile Include="ShaderProgram.cpp" />
+    <ClCompile Include="Timeline.cpp" />
+    <ClCompile Include="IntRange.cpp" />
+    <ClCompile Include="IntVector2.cpp" />
+    <ClCompile Include="ioapi.c" />
+    <ClCompile Include="iowin32.c" />
+    <ClCompile Include="KeyPadInputLogger.cpp" />
+    <ClCompile Include="LineSegment3.cpp" />
+    <ClCompile Include="MathUtilities.cpp" />
+    <ClCompile Include="Matrix4X4.cpp" />
+    <ClCompile Include="MatrixStack.cpp" />
+    <ClCompile Include="MemoryManager.cpp" />
+    <ClCompile Include="Message.cpp" />
+    <ClCompile Include="Mutex.cpp" />
+    <ClCompile Include="MutexLock.cpp" />
+    <ClCompile Include="mztools.c" />
+    <ClCompile Include="NetworkingObject.cpp" />
+    <ClCompile Include="NetworkPacket.cpp" />
+    <ClCompile Include="PacketHeader.cpp" />
+    <ClCompile Include="Plane2.cpp" />
+    <ClCompile Include="Plane3.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="PredictionNode.cpp" />
+    <ClCompile Include="Profile.cpp" />
+    <ClCompile Include="ProfileClock.cpp" />
+    <ClCompile Include="pugixml.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Rgba.cpp" />
+    <ClCompile Include="ShaderLoader.cpp" />
+    <ClCompile Include="SocketManager.cpp" />
+    <ClCompile Include="Sphere3.cpp" />
+    <ClCompile Include="stb_image.c" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="TimeUtility.cpp" />
+    <ClCompile Include="Triangle2.cpp" />
+    <ClCompile Include="Triangle3.cpp" />
+    <ClCompile Include="unzip.c" />
+    <ClCompile Include="UpdateActorCommand.cpp" />
+    <ClCompile Include="UpdateInputCommand.cpp" />
+    <ClCompile Include="UpdateTimelineStateCommand.cpp" />
+    <ClCompile Include="Vector2.cpp" />
+    <ClCompile Include="Vector3.cpp" />
+    <ClCompile Include="XMLNode.cpp" />
+    <ClCompile Include="zip.c" />
+    <ClCompile Include="ZipFile.cpp" />
+    <ClCompile Include="ZipFileLoader.cpp" />
+    <ClCompile Include="ZipFileManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AABB2.hpp" />
+    <ClInclude Include="AABB3.hpp" />
+    <ClInclude Include="Actor.h" />
+    <ClInclude Include="ActorData.h" />
+    <ClInclude Include="AddActorCommand.hpp" />
+    <ClInclude Include="AddTimelineActorCommand.hpp" />
+    <ClInclude Include="Alarm.h" />
+    <ClInclude Include="BitmapFont.h" />
+    <ClInclude Include="BSPNode2.hpp" />
+    <ClInclude Include="BSPNode3.hpp" />
+    <ClInclude Include="Bullet.h" />
+    <ClInclude Include="Capsule2.hpp" />
+    <ClInclude Include="Capsule3.hpp" />
+    <ClInclude Include="Client.hpp" />
+    <ClInclude Include="ClientCommand.hpp" />
+    <ClInclude Include="Clock.h" />
+    <ClInclude Include="ClockSynchronizationMessage.hpp" />
+    <ClInclude Include="CommandConsoleSystem.h" />
+    <ClInclude Include="ConvexPolygon2.hpp" />
+    <ClInclude Include="crypt.h" />
+    <ClInclude Include="DeathCommand.hpp" />
+    <ClInclude Include="DebugUtility.h" />
+    <ClInclude Include="DirectedLineSegment2.hpp" />
+    <ClInclude Include="Disc2.hpp" />
+    <ClInclude Include="DiskFileLoader.h" />
+    <ClInclude Include="ErrorReporter.h" />
+    <ClInclude Include="EventSystem.h" />
+    <ClInclude Include="ExplosionFX.h" />
+    <ClInclude Include="FileLoader.h" />
+    <ClInclude Include="FileManager.h" />
+    <ClInclude Include="FloatRange.h" />
+    <ClInclude Include="GameSimulator.h" />
+    <ClInclude Include="GameWorld.h" />
+    <ClInclude Include="GeneralCommand.hpp" />
+    <ClInclude Include="IncludeGL.h" />
+    <ClInclude Include="IncludeNetworkingLibraries.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="LightManager.h" />
+    <ClInclude Include="ShaderProgram.h" />
+    <ClInclude Include="Timeline.hpp" />
+    <ClInclude Include="IntRange.h" />
+    <ClInclude Include="IntVector2.h" />
+    <ClInclude Include="KeyPadInputLogger.h" />
+    <ClInclude Include="LineSegment3.hpp" />
+    <ClInclude Include="LoginCommand.hpp" />
+    <ClInclude Include="MathUtilities.hpp" />
+    <ClInclude Include="Matrix4X4.h" />
+    <ClInclude Include="MatrixStack.h" />
+    <ClInclude Include="MemoryManager.h" />
+    <ClInclude Include="MemoryUtilities.h" />
+    <ClInclude Include="Message.hpp" />
+    <ClInclude Include="Mutex.h" />
+    <ClInclude Include="MutexLock.h" />
+    <ClInclude Include="NamedProperties.h" />
+    <ClInclude Include="NamedProperty.h" />
+    <ClInclude Include="NamedPropertyBase.h" />
+    <ClInclude Include="NetworkingObject.h" />
+    <ClInclude Include="NetworkPacket.h" />
+    <ClInclude Include="PacketHeader.h" />
+    <ClInclude Include="Plane2.hpp" />
+    <ClInclude Include="Plane3.hpp" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="PredictionNode.h" />
+    <ClInclude Include="Profile.h" />
+    <ClInclude Include="ProfileClock.h" />
+    <ClInclude Include="pugiconfig.hpp" />
+    <ClInclude Include="pugixml.hpp" />
+    <ClInclude Include="RandomChoice.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Rgba.h" />
+    <ClInclude Include="SelfUnregister.h" />
+    <ClInclude Include="ShaderLoader.h" />
+    <ClInclude Include="SocketManager.h" />
+    <ClInclude Include="SpaceGameUtilities.hpp" />
+    <ClInclude Include="Sphere3.hpp" />
+    <ClInclude Include="Subscriber.h" />
+    <ClInclude Include="SubscriberBase.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="TimeUtility.h" />
+    <ClInclude Include="Triangle2.hpp" />
+    <ClInclude Include="Triangle3.hpp" />
+    <ClInclude Include="UpdateActorCommand.hpp" />
+    <ClInclude Include="UpdateInputCommand.hpp" />
+    <ClInclude Include="UpdateTimelineStateCommand.hpp" />
+    <ClInclude Include="Vector2.hpp" />
+    <ClInclude Include="Vector3.hpp" />
+    <ClInclude Include="Vector4.h" />
+    <ClInclude Include="Vertex.h" />
+    <ClInclude Include="XMLNode.h" />
+    <ClInclude Include="ZipFile.h" />
+    <ClInclude Include="ZipFileLoader.h" />
+    <ClInclude Include="ZipFileManager.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

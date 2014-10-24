@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<Maps>
+  <Map tileTypes="Grass, Stone, Wood, Lava" tileSpawnPercentage=".60, .20, .60, .10" agentTypes="Zombie, Nymph, Djinn" agentSpawnPercentage =" 10, 5, 1" monsterSpawnRatio=".05" entityTypes="RedDoor" entitySpawnPercentage="1" entitySpawnRatio=".02 " itemTypes ="FireFist, IronFists, RedKey, BigBow, Ruby, Emerald" itemSpawnPercentages="5, 5, 5, 10, 20, 20" itemSpawnRatio=".1" mapSize=" 25 25" />
+  <Map tileTypes="Wood, Stone" tileSpawnPercentage =" 100, 10 " agentTypes="Zombie" agentSpawnPercentage="1" monsterSpawnRatio =" 0 " entityTypes="chest" entitySpawnPercentage="1" entitySpawnRatio=".005 " itemTypes ="Emerald" itemSpawnPercentages="1" itemSpawnRatio="0.01" mapSize=" 25 25" />
+</Maps>

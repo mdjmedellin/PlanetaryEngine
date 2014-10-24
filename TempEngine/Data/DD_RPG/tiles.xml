@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<TileBlueprints>
+  
+  <TileBlueprint name="Grass" properties="walk,fly" color=".08, .27, 0" >
+    <Traversal>
+      <AllowIf containsFlags="walk" />
+      <AllowIf containsFlags="ghost" />
+      <AllowIf containsFlags="fly" />
+      <AllowIf containsFlags="placeable" />
+    </Traversal>
+  </TileBlueprint>
+  
+  <TileBlueprint name="Wood" color=".41,.23,.07" properties="walk,fly" >
+    <Traversal>
+      <AllowIf containsFlags="walk" />
+      <AllowIf containsFlags="ghost" />
+      <AllowIf containsFlags="fly" />
+      <AllowIf containsFlags="placeable" />
+    </Traversal>
+  </TileBlueprint>
+  
+  <TileBlueprint name="Stone" color=".1,.1,.1" >
+    <Traversal>
+      <AllowIf containsFlags="ghost" />
+    </Traversal>
+  </TileBlueprint>
+  
+  <TileBlueprint name="Swamp" color=".24, .20, 0" >
+    <Traversal>
+      <AllowIf containsFlags="ghost" />
+      <AllowIf containsFlags="fly" />
+    </Traversal>
+  </TileBlueprint>
+  
+  <TileBlueprint name="Water" properties="walk,fly" color="0, .20, .35" >
+    <Traversal>
+      <AllowIf containsFlags="ghost" />
+      <AllowIf containsFlags="fly" />
+      <AllowIf containsFlags="swim" />
+    </Traversal>
+  </TileBlueprint>
+  
+  <TileBlueprint name="Lava" properties="walk,fly" color=".44, 0, 0" >
+    <Traversal>
+      <AllowIf containsFlags="walk" />
+      <AllowIf containsFlags="fly" />
+      <AllowIf containsFlags="ghost" />
+    </Traversal>
+    <OnEnterEvent>
+      <TriggerIf containsFlags="!fly, !ghost, !lavaImmune" />
+      <Event type="damageAgent" damage="10~15" setFlag="burn"/>
+    </OnEnterEvent>
+  </TileBlueprint>
+  
+  <TileBlueprint name="stairUp" color=".5,.5,.5" properties="walk" onInteractionEvent="loadNextMap"/>
+  
+  <TileBlueprint name="stairDown" color="1,1,1" properties="walk" onInteractionEvent="loadPrevMap"/>
+
+</TileBlueprints>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<EntityBlueprints>
+  <EntityBlueprint name="chest" color=".6, .1, .7" glyph="C" container="true" />
+  <EntityBlueprint name="RedDoor" color=".8,.1,.3" glyph="D" container="false" properties="placeable" >
+                   <AllowIf inventoryContains="RedKey" />
+  </EntityBlueprint>
+  <EntityBlueprint name="trap" color=".2,.9,.5" glyph="T" container="false" />
+</EntityBlueprints>
