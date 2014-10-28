@@ -59,6 +59,12 @@ namespace gh
 		m_stack.back() = m_stack.back() * translationMatrix;
 	}
 
+	void MatrixStack::Translate(const Vector2& translation)
+	{
+		Matrix4X4 translationMatrix = Matrix4X4::TranslationMatrix(translation);
+		m_stack.back() = m_stack.back() * translationMatrix;
+	}
+
 	void MatrixStack::LoadIdentity()
 	{
 		m_stack.back().MakeIdentity();

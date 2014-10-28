@@ -424,3 +424,134 @@ void Matrix4X4::SetKBasis( const Vector3& kBasis )
 	m_values[ 9 ] = kBasis.y;
 	m_values[ 10 ] = kBasis.z;
 }
+
+bool Matrix4X4::InvertMatrix()
+{
+	float inv[16];
+	float determinant = 0.f;
+
+	//calculate the determinant
+	inv[0] =	m_values[5]  * m_values[10] * m_values[15] - 
+				m_values[5]  * m_values[11] * m_values[14] - 
+				m_values[9]  * m_values[6]  * m_values[15] + 
+				m_values[9]  * m_values[7]  * m_values[14] +
+				m_values[13] * m_values[6]  * m_values[11] - 
+				m_values[13] * m_values[7]  * m_values[10];
+
+	inv[4] =	-m_values[4]  * m_values[10] * m_values[15] + 
+				 m_values[4]  * m_values[11] * m_values[14] + 
+				 m_values[8]  * m_values[6]  * m_values[15] - 
+				 m_values[8]  * m_values[7]  * m_values[14] - 
+				 m_values[12] * m_values[6]  * m_values[11] + 
+				 m_values[12] * m_values[7]  * m_values[10];
+
+	inv[8] =	m_values[4]  * m_values[9]	* m_values[15] - 
+				m_values[4]  * m_values[11] * m_values[13] - 
+				m_values[8]  * m_values[5]	* m_values[15] + 
+				m_values[8]  * m_values[7]	* m_values[13] + 
+				m_values[12] * m_values[5]	* m_values[11] - 
+				m_values[12] * m_values[7]	* m_values[9];
+
+	inv[12] =	-m_values[4]  * m_values[9]  * m_values[14] + 
+				 m_values[4]  * m_values[10] * m_values[13] +
+				 m_values[8]  * m_values[5]  * m_values[14] - 
+				 m_values[8]  * m_values[6]  * m_values[13] - 
+				 m_values[12] * m_values[5]  * m_values[10] + 
+				 m_values[12] * m_values[6]  * m_values[9];
+
+	inv[1] =	-m_values[1]  * m_values[10] * m_values[15] + 
+				 m_values[1]  * m_values[11] * m_values[14] + 
+				 m_values[9]  * m_values[2]  * m_values[15] - 
+				 m_values[9]  * m_values[3]  * m_values[14] - 
+				 m_values[13] * m_values[2]  * m_values[11] + 
+				 m_values[13] * m_values[3]  * m_values[10];
+
+	inv[5] =	m_values[0]  * m_values[10] * m_values[15] - 
+				m_values[0]  * m_values[11] * m_values[14] - 
+				m_values[8]  * m_values[2]  * m_values[15] + 
+				m_values[8]  * m_values[3]  * m_values[14] + 
+				m_values[12] * m_values[2]  * m_values[11] - 
+				m_values[12] * m_values[3]  * m_values[10];
+
+	inv[9] =	-m_values[0]  * m_values[9]  * m_values[15] + 
+				 m_values[0]  * m_values[11] * m_values[13] + 
+				 m_values[8]  * m_values[1]  * m_values[15] - 
+				 m_values[8]  * m_values[3]  * m_values[13] - 
+				 m_values[12] * m_values[1]  * m_values[11] + 
+				 m_values[12] * m_values[3]  * m_values[9];
+
+	inv[13] =	m_values [0]  * m_values[9]  * m_values[14] - 
+				m_values [0]  * m_values[10] * m_values[13] - 
+				m_values [8]  * m_values[1]  * m_values[14] + 
+				m_values [8]  * m_values[2]  * m_values[13] + 
+				m_values [12] * m_values[1]  * m_values[10] - 
+				m_values [12] * m_values[2]  * m_values[9];
+
+	inv[2] =	m_values[1]  * m_values[6] * m_values[15] - 
+				m_values[1]  * m_values[7] * m_values[14] - 
+				m_values[5]  * m_values[2] * m_values[15] + 
+				m_values[5]  * m_values[3] * m_values[14] + 
+				m_values[13] * m_values[2] * m_values[7] - 
+				m_values[13] * m_values[3] * m_values[6];
+
+	inv[6] =	-m_values[0]  * m_values[6] * m_values[15] + 
+				 m_values[0]  * m_values[7] * m_values[14] + 
+				 m_values[4]  * m_values[2] * m_values[15] - 
+				 m_values[4]  * m_values[3] * m_values[14] - 
+				 m_values[12] * m_values[2] * m_values[7] + 
+				 m_values[12] * m_values[3] * m_values[6];
+
+	inv[10] =	m_values[0]  * m_values[5] * m_values[15] - 
+				m_values[0]  * m_values[7] * m_values[13] - 
+				m_values[4]  * m_values[1] * m_values[15] + 
+				m_values[4]  * m_values[3] * m_values[13] + 
+				m_values[12] * m_values[1] * m_values[7] - 
+				m_values[12] * m_values[3] * m_values[5];
+
+	inv[14] =	-m_values[0]  * m_values[5] * m_values[14] + 
+				 m_values[0]  * m_values[6] * m_values[13] + 
+				 m_values[4]  * m_values[1] * m_values[14] - 
+				 m_values[4]  * m_values[2] * m_values[13] - 
+				 m_values[12] * m_values[1] * m_values[6] + 
+				 m_values[12] * m_values[2] * m_values[5];
+
+	inv[3] =	-m_values[1] * m_values[6] * m_values[11] + 
+				 m_values[1] * m_values[7] * m_values[10] + 
+				 m_values[5] * m_values[2] * m_values[11] - 
+				 m_values[5] * m_values[3] * m_values[10] - 
+				 m_values[9] * m_values[2] * m_values[7] + 
+				 m_values[9] * m_values[3] * m_values[6];
+
+	inv[7] =	m_values[0] * m_values[6] * m_values[11] - 
+				m_values[0] * m_values[7] * m_values[10] - 
+				m_values[4] * m_values[2] * m_values[11] + 
+				m_values[4] * m_values[3] * m_values[10] + 
+				m_values[8] * m_values[2] * m_values[7] - 
+				m_values[8] * m_values[3] * m_values[6];
+
+	inv[11] =	-m_values[0] * m_values[5] * m_values[11] + 
+				 m_values[0] * m_values[7] * m_values[9] + 
+				 m_values[4] * m_values[1] * m_values[11] - 
+				 m_values[4] * m_values[3] * m_values[9] - 
+				 m_values[8] * m_values[1] * m_values[7] + 
+				 m_values[8] * m_values[3] * m_values[5];
+
+	inv[15] =	m_values[0] * m_values[5] * m_values[10] - 
+				m_values[0] * m_values[6] * m_values[9] - 
+				m_values[4] * m_values[1] * m_values[10] + 
+				m_values[4] * m_values[2] * m_values[9] + 
+				m_values[8] * m_values[1] * m_values[6] - 
+				m_values[8] * m_values[2] * m_values[5];
+
+	determinant = m_values[0] * inv[0] + m_values[1] * inv[4] + m_values[2] * inv[8] + m_values[3] * inv[12];
+
+	if (determinant == 0)
+		return false;
+
+	determinant = 1.0 / determinant;
+
+	for (int i = 0; i < 16; i++)
+		m_values[i] = inv[i] * determinant;
+
+	return true;
+}

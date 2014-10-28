@@ -6,6 +6,8 @@ class Vector2;
 class Vector3;
 class Vector4;
 
+//COLUMN MAJOR?
+
 class Matrix4X4
 {
 public:
@@ -58,11 +60,13 @@ public:
 	Vector3 GetKBasis() const;
 	Vector3 GetTranslationBasis() const;
 
-
 	//Set
 	void SetIBasis( const Vector3& iBasis );
 	void SetJBasis( const Vector3& jBasis );
 	void SetKBasis( const Vector3& kBasis );
+
+	//Inversion
+	bool InvertMatrix();
 
 	//LookAt
 	static Matrix4X4 LookAtMatrix( const Vector3& sourcePosition, const Vector3& targetPosition );

@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "road_editor.h"
 #include "TimeUtility.h"
+#include "Renderer.h"
 #include "Application.h"
 
 #define MAX_LOADSTRING 100
@@ -196,11 +197,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_LBUTTONUP:
 		{
-			//AABB2 windowQuad( Vector2( 0.f, theRenderer.getWindowSize().y - 40.f ), theRenderer.getWindowSize() );
-			//gh::ProfileClock::showProfileStatistics("testProfile",  windowQuad );
-			/*Vector2 mouseLocation( LOWORD(lParam), HIWORD(lParam) );
+			Vector2 mouseLocation( LOWORD(lParam), HIWORD(lParam) );
 			mouseLocation.y = theRenderer.getWindowSize().y - mouseLocation.y;
-			g_pApp->readMouseClick( mouseLocation );*/
+			g_pApp->readMouseClick( mouseLocation );
 		}
 		break;
 
@@ -211,12 +210,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SETFOCUS:
-		ShowCursor(false);
+		//ShowCursor(false);
 		g_pApp->updateInput( true );
 		break;
 
 	case WM_KILLFOCUS:
-		ShowCursor(true);
+		//ShowCursor(true);
 		g_pApp->updateInput( false );
 		break;
 

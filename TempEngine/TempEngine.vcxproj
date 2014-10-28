@@ -166,6 +166,8 @@
     <ClCompile Include="UpdateTimelineStateCommand.cpp" />
     <ClCompile Include="Vector2.cpp" />
     <ClCompile Include="Vector3.cpp" />
+    <ClCompile Include="Vector4.cpp" />
+    <ClCompile Include="Viewport.cpp" />
     <ClCompile Include="XMLNode.cpp" />
     <ClCompile Include="zip.c" />
     <ClCompile Include="ZipFile.cpp" />
@@ -263,6 +265,7 @@
     <ClInclude Include="Vector3.hpp" />
     <ClInclude Include="Vector4.h" />
     <ClInclude Include="Vertex.h" />
+    <ClInclude Include="Viewport.h" />
     <ClInclude Include="XMLNode.h" />
     <ClInclude Include="ZipFile.h" />
     <ClInclude Include="ZipFileLoader.h" />

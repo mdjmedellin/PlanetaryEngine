@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include "Matrix4X4.h"
+#include "Vector4.h"
 #include "MathUtilities.hpp"
 
 namespace gh

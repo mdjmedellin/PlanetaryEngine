@@ -21,6 +21,7 @@ namespace gh
 		void RotateY( float degrees );
 		void RotateZ( float degrees );
 		void Translate( const Vector3& translation );
+		void Translate(const Vector2& translation);
 		void LoadIdentity();
 		void PushPerspective( float fovy, float aspect, float zNear, float zFar );
 		void PushOrtho( float left, float right, float bottom, float top, float zNear, float zFar );

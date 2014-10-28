@@ -15,6 +15,7 @@
 #include "LaneNode.h"
 #include "Intersection.h"
 #include "Camera.h"
+#include "Viewport.h"
 #include "IntersectionConnection.h"
 #include "VehicleManager.h"
 
@@ -68,6 +69,20 @@ namespace
 
 namespace gh
 {
+	void ClickCircle::Render(MatrixStack& matrixStack)
+	{
+		matrixStack.PushMatrix();
+		matrixStack.Translate(m_location);
+
+		glLoadMatrixf( matrixStack.GetTopMatrixFV() );
+
+		Rgba myColor = Rgba::WHITE;
+		AABB2 test(-1, -1, 1, 1);
+		theRenderer.renderQuad(test, myColor.getVector4(), nullptr);
+		matrixStack.PopMatrix();
+	}
+
+
 	Application::Application( HWND handleWnd, HDC handleDC )
 		:	m_hWnd( handleWnd )
 		,	m_hDC( handleDC )
@@ -78,9 +93,13 @@ namespace gh
 		,	m_backgroundColor( Rgba( 0.0f, 0.0f, 0.0f ) )
 		,	m_roadSystem( nullptr )
 		,	m_camera( nullptr )
+		,	m_viewport( nullptr )
 		,	m_vehicleManager( nullptr )
 		,	m_updateInput( false )
 		,	m_stop( false )
+		,	m_nearZ(0.1f)
+		,	m_farZ(10000.f)
+		,	m_fovy(45.f)
 	{
 		//initialize glew
 		glewInit();
@@ -116,10 +135,10 @@ namespace gh
 		registerConsoleCommand( "QUIT", &( ConsoleCommand_QuitApplication ) );
 
 		//initiate driving system and vehicle manager
-		initiateDrivingSystem();
+		//initiateDrivingSystem();
 
 		m_camera = new Camera( false );
-		m_camera->setPosition( Vector3( 300.f, 300.f, 1500.f ) );
+		m_camera->setPosition( Vector3( 0.f, 0.f, 100.f ) );
 
 		m_updateInput = true;
 	}
@@ -133,13 +152,21 @@ namespace gh
 		theConsole.recalculateText();
 
 		glViewport( 0, 0, width, height );
+		if(m_viewport == nullptr)
+		{
+			m_viewport = new Viewport(0, 0, width, height);
+		}
+		else
+		{
+			m_viewport->SetViewport(0, 0, width, height);
+		}
 
 		GLdouble aspectRatio = width / static_cast< GLdouble >( height );
 
 		glMatrixMode( GL_MODELVIEW );
 		m_matrixStack.ClearStack();
 		m_matrixStack.LoadIdentity();
-		m_matrixStack.PushPerspective( 45.f, (float)aspectRatio, .1f, 10000.f );
+		m_matrixStack.PushPerspective( m_fovy, (float)aspectRatio, m_nearZ, m_farZ );
 	}
 
 	//TODO:
@@ -1079,18 +1106,21 @@ namespace gh
 			m_camera->updateDynamics( deltaTime );
 
 			//update the roads and vehicles
+			if(m_roadSystem)
 			m_roadSystem->update( deltaTime );
+
+			if(m_vehicleManager)
 			m_vehicleManager->updateVehicles( deltaTime );
-			//updateVehicles( deltaTime );
 		}
 
 		m_matrixStack.PushMatrix();
 		theRenderer.useRegularFBO( m_backgroundColor.getVector4(), CLEAR_COLOR | CLEAR_DEPTH );
 
+		render2DScene();
 		render3DScene();
 
 		m_matrixStack.PopMatrix();
-		SwapBuffers( m_hDC );
+		SwapBuffers(m_hDC);
 	}
 
 	void Application::toggleOrigin()
@@ -1101,6 +1131,48 @@ namespace gh
 	void Application::toggleCommandConsole()
 	{
 		m_openCommandConsole = !m_openCommandConsole;
+	}
+
+	void Application::render2DScene()
+	{
+		m_matrixStack.PushMatrix();
+
+		m_matrixStack.PushOrtho(0.f, m_windowSize.x, 0.f, m_windowSize.y, -1.f, 1.f );
+		glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
+
+		theRenderer.disableAllTextures();
+
+		//rendering mouse
+
+		Vector2 cursorPos;
+
+		if( m_openCommandConsole )
+		{
+			theConsole.render( AABB2( Vector2( 0.f, 0.f ), m_windowSize ) );
+		}
+		else
+		{
+			POINT p;
+			if (GetCursorPos(&p))
+			{
+				if (ScreenToClient( m_hWnd, &p))
+				{
+					cursorPos.x = p.x;
+					cursorPos.y = theRenderer.getWindowSize().y - p.y;
+				}
+			}
+
+			//m_world->render( m_matrixStack, cursorPos );
+
+			glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
+
+			theRenderer.renderQuad( AABB2( cursorPos - Vector2( 10, 10 ), cursorPos + Vector2(10, 10 ) ), Vector4( 1.0, 1.0, 1.0, 1.0 ), NULL );
+
+		}
+
+		glEnable( GL_DEPTH_TEST );
+
+		m_matrixStack.PopMatrix();
 	}
 
 	void Application::render3DScene()
@@ -1123,9 +1195,16 @@ namespace gh
 		glDisable( GL_DEPTH_TEST );
 		glDisable( GL_TEXTURE_2D );
 
+		if(m_roadSystem)
 		m_roadSystem->render( m_matrixStack );
+		
+		if(m_vehicleManager)
 		m_vehicleManager->renderVehicles( m_matrixStack );
-		//renderVehicles();
+
+		for(int i = 0; i < m_tempCircles.size(); ++i)
+		{
+			m_tempCircles[i]->Render(m_matrixStack);
+		}
 
 		glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
 
@@ -1235,6 +1314,67 @@ namespace gh
 		delete m_roadSystem;
 
 		delete m_vehicleManager;
+
+		if(m_viewport)
+		delete m_viewport;
+	}
+
+	void Application::readMouseClick(const Vector2& mouseClickLocation)
+	{
+		//need to unproject the coordinates into world
+		const Vector3& camPosition = m_camera->position();
+		Vector3 windowCoordinates(mouseClickLocation);
+
+		//the matrix stack at this point is the projection matrix
+		m_matrixStack.PushMatrix();
+
+		//load the view matrix
+		m_matrixStack.Translate(-camPosition);
+
+		//get normalized device coordinates
+		Vector4 nearNormalizedDeviceCoordinates;
+		Vector4 farNormalizedDeviceCoordinates;
+		windowCoordinates.z = 0.0f;
+		m_viewport->GetNormalizedDeviceCoordinates(nearNormalizedDeviceCoordinates, windowCoordinates);
+		//nearNormalizedDeviceCoordinates.x = windowCoordinates.x;
+		//nearNormalizedDeviceCoordinates.y = windowCoordinates.y;
+		windowCoordinates.z = 1.0f;
+		m_viewport->GetNormalizedDeviceCoordinates(farNormalizedDeviceCoordinates, windowCoordinates);
+		//farNormalizedDeviceCoordinates.x = windowCoordinates.x;
+		//farNormalizedDeviceCoordinates.y = windowCoordinates.y;
+
+		//calculate the unprojection matrix
+		Matrix4X4 unprojectionMatrix = m_matrixStack.back();
+		if(unprojectionMatrix.InvertMatrix())
+		{
+			Vector4 nearPosition;
+			Vector4 farPosition;
+			nearPosition = unprojectionMatrix.TransformPoint(nearNormalizedDeviceCoordinates);
+			nearPosition.w = 1.f / nearPosition.w;
+			nearPosition.x *= nearPosition.w;
+			nearPosition.y *= nearPosition.w;
+			nearPosition.z *= nearPosition.w;
+			farPosition = unprojectionMatrix.TransformPoint(farNormalizedDeviceCoordinates);
+			farPosition.w = 1.f / farPosition.w;
+			farPosition.x *= farPosition.w;
+			farPosition.y *= farPosition.w;
+			farPosition.z *= farPosition.w;
+
+			float zSlope = farPosition.z - nearPosition.z;
+			if( nearPosition.z >= 0.f && zSlope < 0.f
+				|| nearPosition.z < 0.f && zSlope > 0.f)
+			{
+				//we know that the plane z == 0.f is between the front and back part of the frustum
+				//calculate how far to get to it
+				float t = -nearPosition.z / farPosition.z;
+				Vector4 worldLocation = ((1.f - t) * nearPosition) + (t * farPosition);
+
+				m_tempCircles.push_back(new ClickCircle(worldLocation, 1.f));
+			}
+			//m_tempCircles.push_back(new ClickCircle(mouseClickLocation, 1.f));
+		}
+
+		m_matrixStack.PopMatrix();
 	}
 
 }
