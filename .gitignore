@@ -39,6 +39,8 @@ build/
 *.tmp
 *.tmp_proj
 *.log
+*.tlog
+*.idb
 *.vspscc
 *.vssscc
 .builds
