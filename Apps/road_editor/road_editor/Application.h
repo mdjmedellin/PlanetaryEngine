@@ -28,12 +28,17 @@ namespace gh
 
 	struct ClickCircle
 	{
-		ClickCircle(Vector4& location, float timeUntilExpiration)
-		{
-			m_location.setXYZ(location.x, location.y, location.z);
-			m_expirationTime = timeUntilExpiration;
-		}
+		ClickCircle(Vector3& location, float timeUntilExpiration)
+			:	m_location(location)
+			,	m_expirationTime(timeUntilExpiration)
+		{};
 
+		ClickCircle()
+			:	m_location(Vector3())
+			,	m_expirationTime(1.f)
+		{};
+
+		void SetLocation(const Vector3& newLocation);
 		void Render(MatrixStack& matrixStack);
 
 		Vector3 m_location;
@@ -67,16 +72,24 @@ namespace gh
 		void initiateRoadSystem();
 		void updateVehicles( double deltaTime );
 		void renderVehicles();
+		void UpdateCursorPosition();
+		void CalculateFrustumPoints(const Vector3& screenCoordinates, Vector3& nearFrustumWorldCoordinates,
+			Vector3& farFrustumWorldCoordinates);
+		bool GetMouseWorldPosWithSpecifiedZ(Vector3& out_worldPos, float desiredZValue);
 
 		HWND m_hWnd;
 		HDC m_hDC;
 		bool m_openCommandConsole, m_displayOrigin;
 		MatrixStack m_matrixStack;
 		Vector2 m_windowSize;
+		Vector3 m_mouseScreenCoordinates;
+		Vector3 m_mouseNearFrustumCoordinates;
+		Vector3 m_mouseFarFrustumCoordinates;
 		Rgba m_backgroundColor;
 		RoadSystem* m_roadSystem;
 		Camera* m_camera;
 		Viewport* m_viewport;
+		bool m_splineMode;
 		bool m_updateInput;
 		bool m_stop;
 		VehicleManager* m_vehicleManager;
@@ -85,6 +98,11 @@ namespace gh
 		float m_fovy;
 		float m_nearZ;
 		float m_farZ;
+		float m_aspectRatio;
+		int m_indexOfLastPermanentNode;
+		int m_indexOfLastTempNode;
+		float m_lengthOfFragment;
+		float m_lengthOfFragmentSquared;
 	};
 	//=================================================================================================
 	///////////////////////////////////////////////////////////////////////////////////////////////////

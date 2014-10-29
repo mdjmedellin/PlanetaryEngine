@@ -82,6 +82,11 @@ namespace gh
 		matrixStack.PopMatrix();
 	}
 
+	void ClickCircle::SetLocation( const Vector3& newLocation )
+	{
+		m_location = newLocation;
+	}
+
 
 	Application::Application( HWND handleWnd, HDC handleDC )
 		:	m_hWnd( handleWnd )
@@ -90,6 +95,10 @@ namespace gh
 		,	m_displayOrigin( false )
 		,	m_matrixStack( MatrixStack() )
 		,	m_windowSize( Vector2() )
+		,	m_mouseScreenCoordinates( Vector3() )
+		,	m_mouseNearFrustumCoordinates( Vector3() )
+		,	m_mouseFarFrustumCoordinates( Vector3() )
+		,	m_splineMode(false)
 		,	m_backgroundColor( Rgba( 0.0f, 0.0f, 0.0f ) )
 		,	m_roadSystem( nullptr )
 		,	m_camera( nullptr )
@@ -100,6 +109,11 @@ namespace gh
 		,	m_nearZ(0.1f)
 		,	m_farZ(10000.f)
 		,	m_fovy(45.f)
+		,	m_aspectRatio(0.f)
+		,	m_indexOfLastPermanentNode(0)
+		,	m_indexOfLastTempNode(0)
+		,	m_lengthOfFragment(10.f)
+		,	m_lengthOfFragmentSquared(m_lengthOfFragment * m_lengthOfFragment)
 	{
 		//initialize glew
 		glewInit();
@@ -148,7 +162,7 @@ namespace gh
 		//keep track of the new window size
 		m_windowSize.x = (float)width;
 		m_windowSize.y = (float)height;
-		theRenderer.updateWindowSize( m_windowSize );
+		theRenderer.updateWindowSize(m_windowSize);
 		theConsole.recalculateText();
 
 		glViewport( 0, 0, width, height );
@@ -161,12 +175,12 @@ namespace gh
 			m_viewport->SetViewport(0, 0, width, height);
 		}
 
-		GLdouble aspectRatio = width / static_cast< GLdouble >( height );
+		m_aspectRatio = width / ((float)height);
 
 		glMatrixMode( GL_MODELVIEW );
 		m_matrixStack.ClearStack();
 		m_matrixStack.LoadIdentity();
-		m_matrixStack.PushPerspective( m_fovy, (float)aspectRatio, m_nearZ, m_farZ );
+		m_matrixStack.PushPerspective( m_fovy, m_aspectRatio, m_nearZ, m_farZ );
 	}
 
 	//TODO:
@@ -1097,6 +1111,72 @@ namespace gh
 		glColor3f( 1.f, 1.f, 1.f );
 	}
 
+	void Application::UpdateCursorPosition()
+	{
+		POINT p;
+		if (GetCursorPos(&p))
+		{
+			if (ScreenToClient(m_hWnd, &p))
+			{
+				m_mouseScreenCoordinates.x = p.x;
+				m_mouseScreenCoordinates.y = theRenderer.getWindowSize().y - p.y;
+
+				//get the points that define the ray the mouse click defines in the frustum
+				CalculateFrustumPoints(m_mouseScreenCoordinates, m_mouseNearFrustumCoordinates,
+					m_mouseFarFrustumCoordinates);
+			}
+		}
+	}
+
+	//function calculates the points the screen coordinates defines in the frustrum
+	void Application::CalculateFrustumPoints(const Vector3& screenCoordinates, Vector3& nearFrustumWorldCoordinates,
+		Vector3& farFrustumWorldCoordinates)
+	{
+		//need to unproject the coordinates into world
+		const Vector3& camPosition = m_camera->position();
+		Vector3 localScreenCoordinates = screenCoordinates;
+
+		m_matrixStack.PushMatrix();
+		m_matrixStack.LoadIdentity();
+		m_matrixStack.PushPerspective(m_fovy, m_aspectRatio, m_nearZ, m_farZ);
+
+		//load the view matrix
+		m_matrixStack.Translate(-camPosition);
+
+		//get normalized device coordinates
+		Vector4 nearNormalizedDeviceCoordinates;
+		Vector4 farNormalizedDeviceCoordinates;
+		
+		localScreenCoordinates.z = 0.0f;
+		m_viewport->GetNormalizedDeviceCoordinates(nearNormalizedDeviceCoordinates, localScreenCoordinates);
+
+		localScreenCoordinates.z = 1.0f;
+		m_viewport->GetNormalizedDeviceCoordinates(farNormalizedDeviceCoordinates, localScreenCoordinates);
+
+		//calculate the unprojection matrix
+		Matrix4X4 unprojectionMatrix = m_matrixStack.back();
+		if(unprojectionMatrix.InvertMatrix())
+		{
+			Vector4 nearWorldPosition;
+			Vector4 farWorldPosition;
+			
+			nearWorldPosition = unprojectionMatrix.TransformPoint(nearNormalizedDeviceCoordinates);
+			nearWorldPosition.w = 1.f / nearWorldPosition.w;
+			nearWorldPosition.x *= nearWorldPosition.w;
+			nearWorldPosition.y *= nearWorldPosition.w;
+			nearWorldPosition.z *= nearWorldPosition.w;
+			nearFrustumWorldCoordinates.setXYZ(nearWorldPosition.x, nearWorldPosition.y, nearWorldPosition.z);
+
+			farWorldPosition = unprojectionMatrix.TransformPoint(farNormalizedDeviceCoordinates);
+			farWorldPosition.w = 1.f / farWorldPosition.w;
+			farWorldPosition.x *= farWorldPosition.w;
+			farWorldPosition.y *= farWorldPosition.w;
+			farWorldPosition.z *= farWorldPosition.w;
+			farFrustumWorldCoordinates.setXYZ(farWorldPosition.x, farWorldPosition.y, farWorldPosition.z);
+		}
+
+		m_matrixStack.PopMatrix();
+	}
 
 	void Application::updateFrame( double deltaTime )
 	{	
@@ -1112,6 +1192,9 @@ namespace gh
 			if(m_vehicleManager)
 			m_vehicleManager->updateVehicles( deltaTime );
 		}
+
+		//update the cursor position
+		UpdateCursorPosition();
 
 		m_matrixStack.PushMatrix();
 		theRenderer.useRegularFBO( m_backgroundColor.getVector4(), CLEAR_COLOR | CLEAR_DEPTH );
@@ -1143,35 +1226,20 @@ namespace gh
 		theRenderer.disableAllTextures();
 
 		//rendering mouse
-
-		Vector2 cursorPos;
-
 		if( m_openCommandConsole )
 		{
 			theConsole.render( AABB2( Vector2( 0.f, 0.f ), m_windowSize ) );
 		}
 		else
 		{
-			POINT p;
-			if (GetCursorPos(&p))
-			{
-				if (ScreenToClient( m_hWnd, &p))
-				{
-					cursorPos.x = p.x;
-					cursorPos.y = theRenderer.getWindowSize().y - p.y;
-				}
-			}
-
-			//m_world->render( m_matrixStack, cursorPos );
-
+			Vector2 mouseCoords2D(m_mouseScreenCoordinates.x, m_mouseScreenCoordinates.y);
 			glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
-
-			theRenderer.renderQuad( AABB2( cursorPos - Vector2( 10, 10 ), cursorPos + Vector2(10, 10 ) ), Vector4( 1.0, 1.0, 1.0, 1.0 ), NULL );
+			theRenderer.renderQuad( AABB2( mouseCoords2D - Vector2( 10, 10 ), mouseCoords2D + Vector2(10, 10 ) ),
+				Vector4( 1.0, 1.0, 1.0, 1.0 ), NULL );
 
 		}
 
 		glEnable( GL_DEPTH_TEST );
-
 		m_matrixStack.PopMatrix();
 	}
 
@@ -1201,12 +1269,113 @@ namespace gh
 		if(m_vehicleManager)
 		m_vehicleManager->renderVehicles( m_matrixStack );
 
-		for(int i = 0; i < m_tempCircles.size(); ++i)
+		if(m_splineMode && !m_tempCircles.empty())
 		{
-			m_tempCircles[i]->Render(m_matrixStack);
+			Vector3 mouseWorldPos;
+			if(GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f))
+			{
+				//the editor should handle differently depending on the fact of whether there are any
+				//permanent nodes or none
+				if(m_indexOfLastPermanentNode <= 0)
+				{
+					ClickCircle* lastClickCircle = m_tempCircles[m_indexOfLastPermanentNode];
+					//get the distance from the last circle to the current mouse position
+					Vector3 deltaDistanceBetweenPoints = mouseWorldPos - lastClickCircle->m_location;
+					Vector3 normalizedDirection = deltaDistanceBetweenPoints;
+					normalizedDirection.normalize();
+					float distanceSquared = deltaDistanceBetweenPoints.calculateRadialDistanceSquared();
+
+					//recalculate the best path to the mouse cursor
+					int indexOfTempNodeToPlace = 0;
+					int sizeOfNodeHolder = m_tempCircles.size();
+					ClickCircle* currentNode = m_tempCircles[m_indexOfLastPermanentNode];
+					Vector3 locationOfNextNode;
+					while(distanceSquared > m_lengthOfFragmentSquared)
+					{
+						++indexOfTempNodeToPlace;
+
+						locationOfNextNode = currentNode->m_location + (normalizedDirection * m_lengthOfFragment);
+						
+						if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+						{
+							m_tempCircles.push_back(new ClickCircle());
+						}
+
+						//instead of allocating a new node, just reuse the node that is already on the list
+						m_tempCircles[indexOfTempNodeToPlace]->SetLocation(locationOfNextNode);
+
+						//recalculate distance to mouse
+						deltaDistanceBetweenPoints = mouseWorldPos - locationOfNextNode;
+						distanceSquared = deltaDistanceBetweenPoints.calculateRadialDistanceSquared();
+
+						currentNode = m_tempCircles[indexOfTempNodeToPlace];
+					}
+
+					m_indexOfLastTempNode = indexOfTempNodeToPlace;
+				}
+				else
+				{
+					int i = 1;
+				}
+
+				glLoadMatrixf(m_matrixStack.GetTopMatrixFV());
+				glDisable(GL_TEXTURE_2D);
+				glUseProgram(0);
+
+				glBegin(GL_LINES);
+				{
+					glColor3f(1.f,0.f,0.f);
+
+					Vector3 currentNodeLocation;
+					for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
+					{
+						currentNodeLocation = m_tempCircles[i-1]->m_location;
+						glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+						currentNodeLocation = m_tempCircles[i]->m_location;
+						glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+					}
+				}
+				glEnd();
+
+				//reset the color back
+				glColor3f( 1.f, 1.f, 1.f );
+			}
+
+			for(int i = 0; i <= m_indexOfLastTempNode; ++i)
+			{
+				m_tempCircles[i]->Render(m_matrixStack);
+			}
+
+			/*glDisable( GL_TEXTURE_2D );
+			glUseProgram( 0 );
+
+			glBegin( GL_LINES );
+			{
+				glColor3f(	1,  0,  0 );
+				glVertex3f(	0,	0,	0 );
+
+				glColor3f(   1,  0,  0 );
+				glVertex3f(	m_mou,	,	0 );
+
+				glColor3f(   0,  1,  0 );
+				glVertex3f(  0,  0,  0 );
+
+				glColor3f(   0,  1,  0 );
+				glVertex3f(  0,  lineLength,  0 );
+
+				glColor3f(   0,  0,  1 );
+				glVertex3f(  0,  0,  0 );
+
+				glColor3f(   0,  0,  1 );
+				glVertex3f(  0,  0,   lineLength );
+			}
+			glEnd();
+
+			//reset the color back
+			glColor3f( 1.f, 1.f, 1.f );*/
 		}
 
-		glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
+		//glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
 
 		//glLineWidth( 4.f );
 		//drawOrigin( 100 );
@@ -1321,60 +1490,29 @@ namespace gh
 
 	void Application::readMouseClick(const Vector2& mouseClickLocation)
 	{
-		//need to unproject the coordinates into world
-		const Vector3& camPosition = m_camera->position();
-		Vector3 windowCoordinates(mouseClickLocation);
-
-		//the matrix stack at this point is the projection matrix
-		m_matrixStack.PushMatrix();
-
-		//load the view matrix
-		m_matrixStack.Translate(-camPosition);
-
-		//get normalized device coordinates
-		Vector4 nearNormalizedDeviceCoordinates;
-		Vector4 farNormalizedDeviceCoordinates;
-		windowCoordinates.z = 0.0f;
-		m_viewport->GetNormalizedDeviceCoordinates(nearNormalizedDeviceCoordinates, windowCoordinates);
-		//nearNormalizedDeviceCoordinates.x = windowCoordinates.x;
-		//nearNormalizedDeviceCoordinates.y = windowCoordinates.y;
-		windowCoordinates.z = 1.0f;
-		m_viewport->GetNormalizedDeviceCoordinates(farNormalizedDeviceCoordinates, windowCoordinates);
-		//farNormalizedDeviceCoordinates.x = windowCoordinates.x;
-		//farNormalizedDeviceCoordinates.y = windowCoordinates.y;
-
-		//calculate the unprojection matrix
-		Matrix4X4 unprojectionMatrix = m_matrixStack.back();
-		if(unprojectionMatrix.InvertMatrix())
+		m_splineMode = true;
+		Vector3 mouseWorldPosition;
+		if(GetMouseWorldPosWithSpecifiedZ(mouseWorldPosition, 0.f))
 		{
-			Vector4 nearPosition;
-			Vector4 farPosition;
-			nearPosition = unprojectionMatrix.TransformPoint(nearNormalizedDeviceCoordinates);
-			nearPosition.w = 1.f / nearPosition.w;
-			nearPosition.x *= nearPosition.w;
-			nearPosition.y *= nearPosition.w;
-			nearPosition.z *= nearPosition.w;
-			farPosition = unprojectionMatrix.TransformPoint(farNormalizedDeviceCoordinates);
-			farPosition.w = 1.f / farPosition.w;
-			farPosition.x *= farPosition.w;
-			farPosition.y *= farPosition.w;
-			farPosition.z *= farPosition.w;
+			m_tempCircles.push_back(new ClickCircle(mouseWorldPosition, 1.f));
+		}
+	}
 
-			float zSlope = farPosition.z - nearPosition.z;
-			if( nearPosition.z >= 0.f && zSlope < 0.f
-				|| nearPosition.z < 0.f && zSlope > 0.f)
-			{
-				//we know that the plane z == 0.f is between the front and back part of the frustum
-				//calculate how far to get to it
-				float t = -nearPosition.z / farPosition.z;
-				Vector4 worldLocation = ((1.f - t) * nearPosition) + (t * farPosition);
+	bool Application::GetMouseWorldPosWithSpecifiedZ( Vector3& out_worldPos, float desiredZValue )
+	{
+		float zSlope = m_mouseFarFrustumCoordinates.z - m_mouseNearFrustumCoordinates.z;
+		if( m_mouseNearFrustumCoordinates.z >= desiredZValue && zSlope < 0.f
+			|| m_mouseNearFrustumCoordinates.z < desiredZValue && zSlope > 0.f)
+		{
+			//we know that the plane z == 0.f is between the front and back part of the frustum
+			//calculate how far to get to it
+			float t = (desiredZValue-m_mouseNearFrustumCoordinates.z) / (m_mouseFarFrustumCoordinates.z - m_mouseNearFrustumCoordinates.z);
+			out_worldPos = ((1.f - t) * m_mouseNearFrustumCoordinates) + (t * m_mouseFarFrustumCoordinates);
 
-				m_tempCircles.push_back(new ClickCircle(worldLocation, 1.f));
-			}
-			//m_tempCircles.push_back(new ClickCircle(mouseClickLocation, 1.f));
+			return true;
 		}
 
-		m_matrixStack.PopMatrix();
+		return false;
 	}
 
 }
