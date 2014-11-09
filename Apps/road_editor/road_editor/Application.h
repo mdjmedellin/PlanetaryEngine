@@ -25,26 +25,38 @@ namespace gh
 	//================================================================================
 	//////////////////////////////////////////////////////////////////////////////////
 
-
-	struct ClickCircle
+	struct NodeInformation
 	{
-		ClickCircle(Vector3& location, float timeUntilExpiration)
+		Vector3 location;
+		Vector3 direction;
+	};
+
+	struct RoadNode
+	{
+		RoadNode(Vector3& location)
 			:	m_location(location)
-			,	m_expirationTime(timeUntilExpiration)
 		{};
 
-		ClickCircle()
+		RoadNode()
 			:	m_location(Vector3())
-			,	m_expirationTime(1.f)
 		{};
 
 		void SetLocation(const Vector3& newLocation);
-		void Render(MatrixStack& matrixStack);
+		void Render(MatrixStack& matrixStack, const Vector3& nodeColor);
 
 		Vector3 m_location;
-		float m_expirationTime;
 	};
 
+	struct RoadNodeCluster
+	{
+		RoadNodeCluster()
+		{};
+
+		void AddNode(RoadNode* nodeToAdd);
+		void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
+
+		std::vector<RoadNode*> m_roadNodes;
+	};
 
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +79,14 @@ namespace gh
 		void storeWindowSize( const HWND& windowHandle );
 		void render3DScene();
 		void render2DScene();
+		void CalculateSplineToMousePos();
+		bool GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(const Vector3& desiredDirection,
+			const Matrix4X4& maxRotationMatrix, float maxTurnAngleDotProduct, int indexOfLastValidNode,
+			NodeInformation& out_info);
+		int AddSemiCircle(int indexOfSemiCircleStart, const Vector3& directionToBuildSemiCircle);
+		void RenderSplines();
+		void DrawHUD();
+		//void AddSemicirclePathNodes();
 		void drawOrigin( float lineLength );
 		void initiateDrivingSystem();
 		void initiateRoadSystem();
@@ -94,7 +114,8 @@ namespace gh
 		bool m_stop;
 		VehicleManager* m_vehicleManager;
 		std::vector< Vehicle* > m_vehicles;
-		std::vector< ClickCircle* > m_tempCircles;
+		RoadNodeCluster* m_currentRoadNodeCluster;
+		std::vector< RoadNode* > m_tempNodes;
 		float m_fovy;
 		float m_nearZ;
 		float m_farZ;
@@ -103,6 +124,15 @@ namespace gh
 		int m_indexOfLastTempNode;
 		float m_lengthOfFragment;
 		float m_lengthOfFragmentSquared;
+		float m_maxTurnAngleDotProductForRoadSegments;
+		float m_maxYawRotationDegreesForRoadSegments;
+		Matrix4X4 m_roadMaxCWRotationTransformationMatrix;
+		Matrix4X4 m_roadMaxCCWRotationTransfromationMatrix;
+		float m_startTangentStrength;
+		float m_endTangentStrength;
+		float m_HUDFontHeight;
+		float m_HUDLineBreakHeight;
+		bool m_showSecondCurveSystem;
 	};
 	//=================================================================================================
 	///////////////////////////////////////////////////////////////////////////////////////////////////

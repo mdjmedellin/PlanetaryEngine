@@ -48,11 +48,11 @@ public:
 	void MakeIdentity();
 
 	//Transformations
-	Vector4 TransformPoint( const Vector4& point );
-	Vector3 TransformPosition( const Vector3& position );
-	Vector3 TransformDirection( const Vector3& direction );
-	Vector2 TransformPosition( const Vector2& position );
-	Vector2 TransformDirection( const Vector2& direction );
+	Vector4 TransformPoint( const Vector4& point ) const;
+	Vector3 TransformPosition( const Vector3& position ) const;
+	Vector3 TransformDirection( const Vector3& direction ) const;
+	Vector2 TransformPosition( const Vector2& position ) const;
+	Vector2 TransformDirection( const Vector2& direction ) const;
 
 	//Getters
 	Vector3 GetIBasis() const;

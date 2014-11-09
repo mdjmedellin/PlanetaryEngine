@@ -272,7 +272,7 @@ Matrix4X4 Matrix4X4::TranslationMatrix( const Vector3& translation )
 	return toReturn;
 }
 
-Vector4 Matrix4X4::TransformPoint( const Vector4& point )
+Vector4 Matrix4X4::TransformPoint( const Vector4& point ) const
 {
 	float x = point.x * m_values [ 0 ] + point.y * m_values [ 4 ] + point.z * m_values [ 8 ] + point.w * m_values [ 12 ];
 	float y = point.x * m_values [ 1 ] + point.y * m_values [ 5 ] + point.z * m_values [ 9 ] + point.w * m_values [ 13 ];
@@ -282,7 +282,7 @@ Vector4 Matrix4X4::TransformPoint( const Vector4& point )
 	return Vector4( x, y, z, w );
 }
 
-Vector3 Matrix4X4::TransformPosition( const Vector3& position )
+Vector3 Matrix4X4::TransformPosition( const Vector3& position ) const
 {
 	float x = position.x * m_values [ 0 ] + position.y * m_values [ 4 ] + position.z * m_values [ 8 ] + m_values [ 12 ];
 	float y = position.x * m_values [ 1 ] + position.y * m_values [ 5 ] + position.z * m_values [ 9 ] + m_values [ 13 ];
@@ -291,7 +291,7 @@ Vector3 Matrix4X4::TransformPosition( const Vector3& position )
 	return Vector3( x, y, z );
 }
 
-Vector2 Matrix4X4::TransformPosition( const Vector2& position )
+Vector2 Matrix4X4::TransformPosition( const Vector2& position ) const
 {
 	float x = position.x * m_values [ 0 ] + position.y * m_values [ 4 ] + m_values [ 12 ];
 	float y = position.x * m_values [ 1 ] + position.y * m_values [ 5 ] + m_values [ 13 ];
@@ -299,7 +299,7 @@ Vector2 Matrix4X4::TransformPosition( const Vector2& position )
 	return Vector2( x, y );
 }
 
-Vector3 Matrix4X4::TransformDirection( const Vector3& direction )
+Vector3 Matrix4X4::TransformDirection( const Vector3& direction ) const
 {
 	float x = direction.x * m_values [ 0 ] + direction.y * m_values [ 4 ] + direction.z * m_values [ 8 ];
 	float y = direction.x * m_values [ 1 ] + direction.y * m_values [ 5 ] + direction.z * m_values [ 9 ];
@@ -308,7 +308,7 @@ Vector3 Matrix4X4::TransformDirection( const Vector3& direction )
 	return Vector3( x, y, z );
 }
 
-Vector2 Matrix4X4::TransformDirection( const Vector2& direction )
+Vector2 Matrix4X4::TransformDirection( const Vector2& direction ) const
 {
 	float x = direction.x * m_values [ 0 ] + direction.y * m_values [ 4 ];
 	float y = direction.x * m_values [ 1 ] + direction.y * m_values [ 5 ];
