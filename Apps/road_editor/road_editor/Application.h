@@ -53,7 +53,7 @@ namespace gh
 		{};
 
 		void AddNode(RoadNode* nodeToAdd);
-		void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
+		void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), bool renderDirection = false);
 
 		std::vector<RoadNode*> m_roadNodes;
 	};
@@ -128,11 +128,11 @@ namespace gh
 		float m_maxYawRotationDegreesForRoadSegments;
 		Matrix4X4 m_roadMaxCWRotationTransformationMatrix;
 		Matrix4X4 m_roadMaxCCWRotationTransfromationMatrix;
-		float m_startTangentStrength;
-		float m_endTangentStrength;
 		float m_HUDFontHeight;
 		float m_HUDLineBreakHeight;
 		bool m_showSecondCurveSystem;
+		bool m_showDirectionOnPlacedRoads;
+		bool m_showDirectionOnTempNodes;
 	};
 	//=================================================================================================
 	///////////////////////////////////////////////////////////////////////////////////////////////////

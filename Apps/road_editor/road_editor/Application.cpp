@@ -96,7 +96,7 @@ namespace gh
 		m_roadNodes.push_back(nodeToAdd);
 	}
 
-	void RoadNodeCluster::Render(MatrixStack& matrixStack, const Vector3& nodeColor)
+	void RoadNodeCluster::Render(MatrixStack& matrixStack, const Vector3& nodeColor, bool renderDirection)
 	{
 		matrixStack.PushMatrix();
 
@@ -105,6 +105,11 @@ namespace gh
 		{
 			m_roadNodes[i]->Render(matrixStack, nodeColor);
 		}
+
+		std::vector<NodeInformation> arrowheads;
+		NodeInformation currentArrowHeadInformation;
+		int nodesBetweenArrowHeads = 5;
+		int nodeCount = 0;
 
 		//render the connecting lines
 		glLoadMatrixf(matrixStack.GetTopMatrixFV());
@@ -116,15 +121,58 @@ namespace gh
 			glColor3f(1.f,0.f,0.f);
 
 			Vector3 currentNodeLocation;
+			Vector3 prevNodeLocation;
 			for(int i = 1; i < m_roadNodes.size(); ++i)
 			{
 				currentNodeLocation = m_roadNodes[i-1]->m_location;
+				prevNodeLocation = currentNodeLocation;
 				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
 				currentNodeLocation = m_roadNodes[i]->m_location;
 				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+
+				++nodeCount;
+				if(nodeCount >= nodesBetweenArrowHeads && renderDirection)
+				{
+					currentArrowHeadInformation.location = currentNodeLocation;
+					currentArrowHeadInformation.direction = currentNodeLocation - prevNodeLocation;
+					currentArrowHeadInformation.direction.normalize();
+					arrowheads.push_back(currentArrowHeadInformation);
+					nodeCount = 0;
+				}
 			}
 		}
 		glEnd();
+
+
+		if(arrowheads.size() > 0)
+		{
+			glBegin(GL_TRIANGLES);
+			{
+				glColor3f(0.f,1.f,0.f);
+
+				Vector3 point1;
+				Vector3 point2;
+				Vector3 point3;
+				Vector3 rotatedCWDirection;
+				Matrix4X4 rotationMatrix90CW = Matrix4X4::RotateZDegreesMatrix(-90.f);
+				for(int i = 0; i < arrowheads.size(); ++i)
+				{
+					currentArrowHeadInformation = arrowheads[i];
+					point1 = currentArrowHeadInformation.location;
+					point2 = currentArrowHeadInformation.location - (currentArrowHeadInformation.direction * 10.f);
+					point3 = currentArrowHeadInformation.location - (currentArrowHeadInformation.direction * 10.f);
+
+					rotatedCWDirection = rotationMatrix90CW.TransformDirection(currentArrowHeadInformation.direction);
+					point2 -= (rotatedCWDirection * 10.f * 0.5f);
+					point3 += (rotatedCWDirection * 10.f * 0.5f);
+
+					glVertex3f(point1.x, point1.y, point1.z);
+					glVertex3f(point2.x, point2.y, point2.z);
+					glVertex3f(point3.x, point3.y, point3.z);
+				}
+			}
+			glEnd();
+		}
 
 		//reset the color back
 		glColor3f( 1.f, 1.f, 1.f );
@@ -160,11 +208,11 @@ namespace gh
 		,	m_currentRoadNodeCluster(nullptr)
 		,	m_maxYawRotationDegreesForRoadSegments(8.f)
 		,	m_maxTurnAngleDotProductForRoadSegments(0.f)
-		,	m_startTangentStrength(1.f)
-		,	m_endTangentStrength(1.f)
 		,	m_HUDFontHeight(20)
 		,	m_HUDLineBreakHeight(5)
 		,	m_showSecondCurveSystem(false)
+		,	m_showDirectionOnPlacedRoads(false)
+		,	m_showDirectionOnTempNodes(false)
 	{
 		//initialize glew
 		glewInit();
@@ -1611,9 +1659,12 @@ namespace gh
 
 			if(m_currentRoadNodeCluster)
 			{
-				m_currentRoadNodeCluster->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f));
+				m_currentRoadNodeCluster->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
 			}
 		}
+
+		std::vector< NodeInformation > arrowheads;
+		NodeInformation currentArrowHeadInformation;
 
 		glLoadMatrixf(m_matrixStack.GetTopMatrixFV());
 		glDisable(GL_TEXTURE_2D);
@@ -1624,154 +1675,64 @@ namespace gh
 			glColor3f(1.f,0.f,0.f);
 
 			Vector3 currentNodeLocation;
+			Vector3 prevLocation;
+			int countSinceLastArrowDisplay = 0;
+			int nodesBetweenArrowRender = 5;
 			for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
 			{
 				currentNodeLocation = m_tempNodes[i-1]->m_location;
+				prevLocation = currentNodeLocation;
 				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
 				currentNodeLocation = m_tempNodes[i]->m_location;
 				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+
+				++countSinceLastArrowDisplay;
+				if( countSinceLastArrowDisplay >= nodesBetweenArrowRender && m_showDirectionOnTempNodes)
+				{
+					//render the arrowhead
+					Vector3 directionOfRoad = currentNodeLocation - prevLocation;
+					directionOfRoad.normalize();
+
+					currentArrowHeadInformation.location = currentNodeLocation;
+					currentArrowHeadInformation.direction = directionOfRoad;
+					arrowheads.push_back(currentArrowHeadInformation);
+
+					countSinceLastArrowDisplay = 0;
+				}
 			}
 		}
 		glEnd();
 
-	}
-
-
-	/*void Application::AddSemicirclePathNodes()
-	{
-		Matrix4X4 clockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
-		Matrix4X4 counterClockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
-		Matrix4X4 clockwise90DegreeRotation = Matrix4X4::RotateZDegreesMatrix(-90.f);
-
-		RoadNode* currentNode = m_tempNodes[m_indexOfLastPermanentNode];
-		Vector3 directionOfLastPermanentSegment = m_tempNodes[m_indexOfLastPermanentNode]->m_location
-			- m_tempNodes[m_indexOfLastPermanentNode - 1]->m_location;
-		directionOfLastPermanentSegment.normalize();
-
-		Vector3 endDirectionOfSemicircle = directionOfLastPermanentSegment;
-		endDirectionOfSemicircle = clockwise90DegreeRotation.TransformDirection(endDirectionOfSemicircle);
-		endDirectionOfSemicircle = clockwise90DegreeRotation.TransformDirection(endDirectionOfSemicircle);
-
-		bool keepBuilding = true;
-		Vector3 directionOfLastTempSegment = directionOfLastPermanentSegment;
-		Vector3 directionOfCurrentTempSegment = directionOfLastPermanentSegment;
-
-		while(keepBuilding)
+		if(arrowheads.size() > 0)
 		{
-			++indexOfTempNodeToPlace;
-
-			//check which way to bend the next segment and by how much
-			//clockwise or counterclockwise
-			Vector3 clockwise90DegreeRotatedDirection = clockwise90DegreeRotation.TransformPosition(directionOfLastPermanentSegment);
-
-			locationOfNextNode = currentNode->m_location;
-			float dotProductDesiredAngleToCursorComparedToPreviousFragment = directionOfLastPermanentSegment.DotProduct(normalizedDirection);
-
-			//check if we are rotating clockwise
-			if(buildSemicircleClockwise)
+			glBegin(GL_TRIANGLES);
 			{
-				//check if we can turn the road segment to face the cursor directly
-				if(m_maxTurnAngleDotProductForRoadSegments < dotProductDesiredAngleToCursorComparedToPreviousFragment)
+				glColor3f(0.f,0.f,1.f);
+
+				Vector3 point1;
+				Vector3 point2;
+				Vector3 point3;
+				Vector3 rotatedCWDirection;
+				Matrix4X4 rotationMatrix90CW = Matrix4X4::RotateZDegreesMatrix(-90.f);
+				for(int i = 0; i < arrowheads.size(); ++i)
 				{
-					locationOfNextNode += normalizedDirection * m_lengthOfFragment;
-					directionOfLastPermanentSegment = normalizedDirection;
-				}
-				else	//check if we should rotate the road segment to its max angle in the direction of the cursor
-				{
-					directionOfLastPermanentSegment = clockwiseMaxRotation.TransformPosition(directionOfLastPermanentSegment);
-					locationOfNextNode += directionOfLastPermanentSegment * m_lengthOfFragment;
+					currentArrowHeadInformation = arrowheads[i];
+					point1 = currentArrowHeadInformation.location;
+					point2 = currentArrowHeadInformation.location - (currentArrowHeadInformation.direction * m_lengthOfFragment);
+					point3 = currentArrowHeadInformation.location - (currentArrowHeadInformation.direction * m_lengthOfFragment);
+
+					rotatedCWDirection = rotationMatrix90CW.TransformDirection(currentArrowHeadInformation.direction);
+					point2 -= (rotatedCWDirection * m_lengthOfFragment * 0.5f);
+					point3 += (rotatedCWDirection * m_lengthOfFragment * 0.5f);
+
+					glVertex3f(point1.x, point1.y, point1.z);
+					glVertex3f(point2.x, point2.y, point2.z);
+					glVertex3f(point3.x, point3.y, point3.z);
 				}
 			}
-			//we are rotating counterclockwise
-			else
-			{
-				if(m_maxTurnAngleDotProductForRoadSegments < dotProductDesiredAngleToCursorComparedToPreviousFragment)
-				{
-					locationOfNextNode += normalizedDirection * m_lengthOfFragment;
-					directionOfLastPermanentSegment = normalizedDirection;
-				}
-				else
-				{
-					directionOfLastPermanentSegment = counterClockwiseMaxRotation.TransformPosition(directionOfLastPermanentSegment);
-					locationOfNextNode += directionOfLastPermanentSegment * m_lengthOfFragment;
-				}
-			}
-
-			//check the have built the semicircle by the addition of this new road node
-			directionOfLastTempSegment
-			float newDistanceSquared = (locationOfNextNode - mouseWorldPos).calculateRadialDistanceSquared();
-			if(newDistanceSquared > distanceSquared)
-			{
-				int numberOfFragmentsPlaced = indexOfTempNodeToPlace - m_indexOfLastPermanentNode;
-				float distanceSquaredOfNewFragments = numberOfFragmentsPlaced * m_lengthOfFragment;
-				distanceSquaredOfNewFragments *= distanceSquaredOfNewFragments;
-
-
-				m_startTangentStrength = distanceSquaredOfNewFragments;
-				m_endTangentStrength = distanceSquaredFromLastPermanentNode;
-
-				//we are moving away from the mouse instead of closer
-
-				if( m_indexOfLastPermanentNode == (indexOfTempNodeToPlace - 1) )
-				{
-					//add a semicircle and see how much closer we can get to the mouse 
-					AddSemicirclePathNodes();
-					int x = 1;
-				}
-
-				if(distanceSquaredOfNewFragments > distanceSquaredFromLastPermanentNode)
-				{
-					--indexOfTempNodeToPlace;
-					break;
-				}
-			}
-
-			if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
-			{
-				m_tempNodes.push_back(new RoadNode());
-			}
-
-			m_tempNodes[indexOfTempNodeToPlace]->SetLocation(locationOfNextNode);
-			currentNode = m_tempNodes[indexOfTempNodeToPlace];
-		}
-
-		m_indexOfLastTempNode = indexOfTempNodeToPlace;
-	}
-
-	glLoadMatrixf(m_matrixStack.GetTopMatrixFV());
-	glDisable(GL_TEXTURE_2D);
-	glUseProgram(0);
-
-	glBegin(GL_LINES);
-	{
-		glColor3f(1.f,0.f,0.f);
-
-		Vector3 currentNodeLocation;
-		for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
-		{
-			currentNodeLocation = m_tempNodes[i-1]->m_location;
-			glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
-			currentNodeLocation = m_tempNodes[i]->m_location;
-			glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+			glEnd();
 		}
 	}
-	glEnd();
-
-	//reset the color back
-	glColor3f( 1.f, 1.f, 1.f );
-			}
-
-			for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
-			{
-				m_tempNodes[i]->Render(m_matrixStack, Vector3(0.f, 1.f, 0.f));
-			}
-
-			if(m_currentRoadNodeCluster)
-			{
-				m_currentRoadNodeCluster->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f));
-			}
-		}
-	}*/
 
 	void Application::DrawHUD()
 	{
@@ -1781,14 +1742,12 @@ namespace gh
 
 		//print the strength of the start tangent
 		std::string textToPrint;
-		textToPrint = "Strength of Start Tangent = " + std::to_string( long double( m_startTangentStrength ) );
 		theRenderer.drawText( textToPrint.c_str(), "test", m_HUDFontHeight, textRenderWindow, TEXT_ALIGN_BOTTOM, toRGBA( 1.f, 1.f, 1.f ) );
 
 		//print the strength of the end tangent
 		float maxY = textRenderWindow.getMins().y;
 		textRenderWindow.setMins(0.f, maxY - (m_HUDFontHeight + m_HUDLineBreakHeight));
 		textRenderWindow.setMaxs(windowSize.x, maxY);
-		textToPrint = "Strength of End Tangent = " + std::to_string( long double( m_endTangentStrength ) );
 		theRenderer.drawText( textToPrint.c_str(), "test", m_HUDFontHeight, textRenderWindow, TEXT_ALIGN_BOTTOM, toRGBA( 1.f, 1.f, 1.f ) );
 	}
 
@@ -1818,25 +1777,16 @@ namespace gh
 
 			case 'o':
 			case 'O':
-				m_startTangentStrength += 1.f;
+				m_showDirectionOnTempNodes = !m_showDirectionOnTempNodes;
 				break;
 
 			case 'p':
 			case 'P':
-				m_startTangentStrength -= 1.f;
-				break;
-
-			case 'k':
-			case 'K':
-				m_endTangentStrength += 1.f;
-				break;
-
-			case 'l':
-			case 'L':
-				m_endTangentStrength -= 1.f;
+				m_showDirectionOnPlacedRoads = !m_showDirectionOnPlacedRoads;
 				break;
 
 			case 'm':
+			case 'M':
 				m_showSecondCurveSystem = !m_showSecondCurveSystem;
 				break;
 
