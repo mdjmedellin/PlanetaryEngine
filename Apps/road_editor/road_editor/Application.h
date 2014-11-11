@@ -85,6 +85,7 @@ namespace gh
 			NodeInformation& out_info);
 		int AddSemiCircle(int indexOfSemiCircleStart, const Vector3& directionToBuildSemiCircle);
 		void RenderSplines();
+		void ExitSplineMode();
 		void DrawHUD();
 		//void AddSemicirclePathNodes();
 		void drawOrigin( float lineLength );
@@ -115,6 +116,7 @@ namespace gh
 		VehicleManager* m_vehicleManager;
 		std::vector< Vehicle* > m_vehicles;
 		RoadNodeCluster* m_currentRoadNodeCluster;
+		std::vector< RoadNodeCluster* > m_roadNodeClusters;
 		std::vector< RoadNode* > m_tempNodes;
 		float m_fovy;
 		float m_nearZ;

@@ -176,6 +176,8 @@ namespace gh
 
 		//reset the color back
 		glColor3f( 1.f, 1.f, 1.f );
+
+		matrixStack.PopMatrix();
 	}
 
 
@@ -1663,6 +1665,11 @@ namespace gh
 			}
 		}
 
+		for(int i = 0; i < m_roadNodeClusters.size(); ++i)
+		{
+			m_roadNodeClusters[i]->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
+		}
+
 		std::vector< NodeInformation > arrowheads;
 		NodeInformation currentArrowHeadInformation;
 
@@ -1771,8 +1778,15 @@ namespace gh
 			switch( (char)charPressed )
 			{
 			case 27:
-				PostQuitMessage( 0 );
-				m_stop = true;
+				if(m_splineMode)
+				{
+					ExitSplineMode();
+				}
+				else
+				{
+					PostQuitMessage( 0 );
+					m_stop = true;
+				}
 				break;
 
 			case 'o':
@@ -1911,6 +1925,35 @@ namespace gh
 				m_splineMode = true;
 			}
 		}
+	}
+
+	void Application::ExitSplineMode()
+	{
+		if(m_splineMode 
+			&& m_currentRoadNodeCluster
+			&& m_currentRoadNodeCluster->m_roadNodes.size() > 1 )
+		{
+			m_roadNodeClusters.push_back(m_currentRoadNodeCluster);
+			m_currentRoadNodeCluster = nullptr;
+		}
+
+		if(m_currentRoadNodeCluster)
+		{
+			delete m_currentRoadNodeCluster;
+		}
+
+		for(int nodeIndex = m_indexOfLastPermanentNode + 1; nodeIndex < m_tempNodes.size(); ++nodeIndex)
+		{
+			if(m_tempNodes[nodeIndex])
+			{
+				delete m_tempNodes[nodeIndex];
+			}
+		}
+
+		m_tempNodes.clear();
+		m_indexOfLastPermanentNode = 0;
+		m_indexOfLastTempNode = 0;
+		m_splineMode = false;
 	}
 
 	bool Application::GetMouseWorldPosWithSpecifiedZ( Vector3& out_worldPos, float desiredZValue )
