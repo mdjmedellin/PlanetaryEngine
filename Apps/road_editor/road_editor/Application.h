@@ -132,6 +132,7 @@ namespace gh
 		Matrix4X4 m_roadMaxCCWRotationTransfromationMatrix;
 		float m_HUDFontHeight;
 		float m_HUDLineBreakHeight;
+		float m_radiusOfRoadCircle;
 		bool m_showSecondCurveSystem;
 		bool m_showDirectionOnPlacedRoads;
 		bool m_showDirectionOnTempNodes;

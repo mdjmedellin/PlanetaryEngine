@@ -265,6 +265,35 @@ namespace gh
 		m_maxTurnAngleDotProductForRoadSegments = rotatedVector.DotProduct(unitVector);
 		m_roadMaxCWRotationTransformationMatrix = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
 		m_roadMaxCCWRotationTransfromationMatrix = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
+
+		//estimate the diameter for a full turn
+		Vector3 origin;
+		Vector3 finalLocation;
+		Vector3 prevLocation;
+		Vector3 direction(1.f,0.f,0.f);
+		Vector3 desiredDirection(-1.f,0.f,0.f);
+		float currentDotProduct = 0.f;
+		float prevDotProduct = -1.f;
+		bool continueLooping = true;
+
+		while(continueLooping)
+		{
+			currentDotProduct = direction.DotProduct(desiredDirection);
+			if(currentDotProduct < prevDotProduct)
+			{
+				continueLooping = false;
+				continue;
+			}
+			else
+			{
+				prevDotProduct = currentDotProduct;
+				direction = m_roadMaxCWRotationTransformationMatrix.TransformDirection(direction);
+				prevLocation = finalLocation;
+				finalLocation += (direction * m_lengthOfFragment);
+			}
+		}
+
+		m_radiusOfRoadCircle = prevLocation.calculateRadialDistance() * .5f;
 	}
 
 	void Application::onResize( int width, int height )
@@ -1575,7 +1604,8 @@ namespace gh
 
 				//Check if we should add a semicircle
 				if(distanceSquared > m_lengthOfFragment
-					&& normalizedDirectionOfLastSegment.DotProduct(normalizedDirectionCurrentNodeToMouse) < 0)
+					&& normalizedDirectionOfLastSegment.DotProduct(normalizedDirectionCurrentNodeToMouse) < 0
+					&& true)
 				{
 					//the mouse is facing on the opposite direction of the last road fragment
 					//therefore we need to add a semi circle turn
@@ -1714,7 +1744,7 @@ namespace gh
 		{
 			glBegin(GL_TRIANGLES);
 			{
-				glColor3f(0.f,0.f,1.f);
+				glColor3f(0.f,0.5f,0.5f);
 
 				Vector3 point1;
 				Vector3 point2;
