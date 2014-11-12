@@ -1602,75 +1602,212 @@ namespace gh
 				Vector3 normalizedDirectionOfLastSegmentRotated90DegreesCW = 
 					clockwise90DegreeRotation.TransformDirection(normalizedDirectionOfLastSegment);
 
-				//Check if we should add a semicircle
-				if(distanceSquared > m_lengthOfFragment
-					&& normalizedDirectionOfLastSegment.DotProduct(normalizedDirectionCurrentNodeToMouse) < 0
-					&& true)
+				//Get the midpoints of the road circles that can be constructed from this node
+				Vector3 midpoint1 = currentNode->m_location + (normalizedDirectionOfLastSegmentRotated90DegreesCW * m_radiusOfRoadCircle);
+				Vector3 midpoint2 = currentNode->m_location - (normalizedDirectionOfLastSegmentRotated90DegreesCW * m_radiusOfRoadCircle);
+
+				//check if the mouse is inside any of the two circles that can be constructed from the last road segment
+				float distanceSquaredFromMidpoint1 = (mouseWorldPos - midpoint1).calculateRadialDistanceSquared();
+				float distanceSquaredFromMidpoint2 = (mouseWorldPos - midpoint2).calculateRadialDistanceSquared();
+				float roadCircleRadiusSquared = m_radiusOfRoadCircle * m_radiusOfRoadCircle;
+
+				if(distanceSquaredFromMidpoint1 >= roadCircleRadiusSquared
+					&& distanceSquaredFromMidpoint2 >= roadCircleRadiusSquared)
 				{
-					//the mouse is facing on the opposite direction of the last road fragment
-					//therefore we need to add a semi circle turn
-					indexOfTempNodeToPlace += AddSemiCircle(indexOfTempNodeToPlace, normalizedDirectionCurrentNodeToMouse);
-					currentNode = m_tempNodes[indexOfTempNodeToPlace];
-					deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
-					normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
-					normalizedDirectionCurrentNodeToMouse.normalize();
-					distanceSquared = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
-				}
+					int firstNodeToNotRequireMaxBend = -1;
 
-				//keep adding nodes if the distance is greater than the size of one segment
-				NodeInformation nextNodeInformation;
-				while(distanceSquared > m_lengthOfFragmentSquared)
-				{
-					deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
-					normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
-					normalizedDirectionCurrentNodeToMouse.normalize();
-					distanceSquared = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
-
-					//calculate the direction of the last segment
-					normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace]->m_location
-						- m_tempNodes[indexOfTempNodeToPlace - 1]->m_location;
-					normalizedDirectionOfLastSegment.normalize();
-
-					normalizedDirectionOfLastSegmentRotated90DegreesCW = 
-						clockwise90DegreeRotation.TransformDirection(normalizedDirectionOfLastSegment);
-
-					//check if we are rotating clockwise or counterclockwise
-					float dotProductLastSegment90CWAndDirectionCurrentNodeToMouse
-						= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeToMouse);
-
-					Matrix4X4 rotationMatrix = counterClockwiseMaxRotation;
-					if(dotProductLastSegment90CWAndDirectionCurrentNodeToMouse > 0.f )
+					//the mouse cursor can be directly reached
+					//keep adding nodes if the distance is greater than the size of one segment
+					NodeInformation nextNodeInformation;
+					bool cannotBreak = true;
+					while(distanceSquared > m_lengthOfFragmentSquared)
 					{
-						rotationMatrix = clockwiseMaxRotation;
-					}
+						deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
+						normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
+						normalizedDirectionCurrentNodeToMouse.normalize();
+						distanceSquared = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
 
-					++indexOfTempNodeToPlace;
+						//calculate the direction of the last segment
+						normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace]->m_location
+							- m_tempNodes[indexOfTempNodeToPlace - 1]->m_location;
+						normalizedDirectionOfLastSegment.normalize();
 
-					//get the location of the next fragment rotated towards the desired direction
-					if(GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(normalizedDirectionCurrentNodeToMouse,
-						rotationMatrix, m_maxTurnAngleDotProductForRoadSegments, indexOfTempNodeToPlace - 1, nextNodeInformation))
-					{
-						//check our stopping conditions
-						float newDistanceSquared = (nextNodeInformation.location - mouseWorldPos).calculateRadialDistanceSquared();
+						normalizedDirectionOfLastSegmentRotated90DegreesCW = 
+							clockwise90DegreeRotation.TransformDirection(normalizedDirectionOfLastSegment);
 
-						//we are getting farther away from the mouse
-						//ignore the condition if the fragment is the first one we are attempting to place
-						int numberOfFragmentsPlaced = indexOfTempNodeToPlace - m_indexOfLastPermanentNode;
-						if(newDistanceSquared > distanceSquared
-							&& numberOfFragmentsPlaced > 1)
+						//check if we are rotating clockwise or counterclockwise
+						float dotProductLastSegment90CWAndDirectionCurrentNodeToMouse
+							= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeToMouse);
+
+						Matrix4X4 rotationMatrix = counterClockwiseMaxRotation;
+						if(dotProductLastSegment90CWAndDirectionCurrentNodeToMouse > 0.f )
+						{
+							rotationMatrix = clockwiseMaxRotation;
+						}
+
+						++indexOfTempNodeToPlace;
+
+						//get the location of the next fragment rotated towards the desired direction
+						if(GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(normalizedDirectionCurrentNodeToMouse,
+							rotationMatrix, m_maxTurnAngleDotProductForRoadSegments, indexOfTempNodeToPlace - 1, nextNodeInformation))
+						{
+							//check our stopping conditions
+							float newDistanceSquared = (nextNodeInformation.location - mouseWorldPos).calculateRadialDistanceSquared();
+
+							//Check if we can break from the loop now
+							if(normalizedDirectionOfLastSegment.DotProduct(normalizedDirectionCurrentNodeToMouse)
+								>= m_maxTurnAngleDotProductForRoadSegments
+								&& cannotBreak)
+							{
+								cannotBreak = false;
+								//save the index of the first node that could directly face the destination
+								firstNodeToNotRequireMaxBend = indexOfTempNodeToPlace;
+							}
+
+							//we are getting farther away from the mouse
+							//ignore the condition if the fragment is the first one we are attempting to place
+							int numberOfFragmentsPlaced = indexOfTempNodeToPlace - m_indexOfLastPermanentNode;
+							if(newDistanceSquared > distanceSquared
+								&& !cannotBreak)
+							{
+								--indexOfTempNodeToPlace;
+								break;
+							}
+
+							//check if we need to add a new RoadNode
+							if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+							{
+								m_tempNodes.push_back(new RoadNode());
+							}
+
+							m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
+							currentNode = m_tempNodes[indexOfTempNodeToPlace];
+						}
+						else
 						{
 							--indexOfTempNodeToPlace;
 							break;
 						}
+					}
 
-						//check if we need to add a new RoadNode
-						if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+					if(firstNodeToNotRequireMaxBend > 0
+						&& firstNodeToNotRequireMaxBend < m_tempNodes.size())
+					{
+						//calculate how much we want to rotate the segment
+						int numberOfNodesNotRequiredToMaxBend = m_tempNodes.size() - firstNodeToNotRequireMaxBend;
+						Vector3 directionOfFirstNodeNotRequiredToMaxBend = m_tempNodes[firstNodeToNotRequireMaxBend - 1]->m_location 
+																		- m_tempNodes[firstNodeToNotRequireMaxBend - 2]->m_location;
+						directionOfFirstNodeNotRequiredToMaxBend.normalize();
+
+						Vector3 desiredDirection = mouseWorldPos - m_tempNodes[firstNodeToNotRequireMaxBend - 1]->m_location;
+						desiredDirection.normalize();
+
+						float dotProductResult = directionOfFirstNodeNotRequiredToMaxBend.DotProduct(desiredDirection);
+						float angleBetweenVector = acosf(dotProductResult);
+
+						angleBetweenVector /= numberOfNodesNotRequiredToMaxBend;
+						Vector3 currentLocation = m_tempNodes[firstNodeToNotRequireMaxBend - 1]->m_location;
+
+						//which way are we rotating
+						//calculate the direction of the last segment
+						Vector3 normalizedDirectionOfLastSegmentRotated90DegreesCW = 
+							clockwise90DegreeRotation.TransformDirection(directionOfFirstNodeNotRequiredToMaxBend);
+
+						Vector3 normalizedDirectionCurrentNodeRoadNodeToMouse = mouseWorldPos - currentLocation;
+						normalizedDirectionCurrentNodeRoadNodeToMouse.normalize();
+
+						//check if we are rotating clockwise or counterclockwise
+						float dotProductLastSegment90CWAndDirectionCurrentNodeToMouse
+							= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeRoadNodeToMouse);
+
+						if(dotProductLastSegment90CWAndDirectionCurrentNodeToMouse > 0.f )
 						{
-							m_tempNodes.push_back(new RoadNode());
+							angleBetweenVector *= -1.f;
 						}
 
-						m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
+						Matrix4X4 rotationVector = Matrix4X4::RotateZRadiansMatrix(angleBetweenVector);
+
+						for(int i = firstNodeToNotRequireMaxBend; i < m_tempNodes.size(); ++i)
+						{
+							directionOfFirstNodeNotRequiredToMaxBend = rotationVector.TransformDirection(directionOfFirstNodeNotRequiredToMaxBend);
+							currentLocation += directionOfFirstNodeNotRequiredToMaxBend * m_lengthOfFragment;
+							m_tempNodes[i]->m_location = currentLocation;
+						}
+					}
+
+				}
+				else
+				{
+					//Check if we should add a semicircle
+					if(distanceSquared > m_lengthOfFragment
+						&& normalizedDirectionOfLastSegment.DotProduct(normalizedDirectionCurrentNodeToMouse) < 0
+						&& true)
+					{
+						//the mouse is facing on the opposite direction of the last road fragment
+						//therefore we need to add a semi circle turn
+						indexOfTempNodeToPlace += AddSemiCircle(indexOfTempNodeToPlace, normalizedDirectionCurrentNodeToMouse);
 						currentNode = m_tempNodes[indexOfTempNodeToPlace];
+						deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
+						normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
+						normalizedDirectionCurrentNodeToMouse.normalize();
+						distanceSquared = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
+					}
+
+					//keep adding nodes if the distance is greater than the size of one segment
+					NodeInformation nextNodeInformation;
+					while(distanceSquared > m_lengthOfFragmentSquared)
+					{
+						deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
+						normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
+						normalizedDirectionCurrentNodeToMouse.normalize();
+						distanceSquared = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
+
+						//calculate the direction of the last segment
+						normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace]->m_location
+							- m_tempNodes[indexOfTempNodeToPlace - 1]->m_location;
+						normalizedDirectionOfLastSegment.normalize();
+
+						normalizedDirectionOfLastSegmentRotated90DegreesCW = 
+							clockwise90DegreeRotation.TransformDirection(normalizedDirectionOfLastSegment);
+
+						//check if we are rotating clockwise or counterclockwise
+						float dotProductLastSegment90CWAndDirectionCurrentNodeToMouse
+							= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeToMouse);
+
+						Matrix4X4 rotationMatrix = counterClockwiseMaxRotation;
+						if(dotProductLastSegment90CWAndDirectionCurrentNodeToMouse > 0.f )
+						{
+							rotationMatrix = clockwiseMaxRotation;
+						}
+
+						++indexOfTempNodeToPlace;
+
+						//get the location of the next fragment rotated towards the desired direction
+						if(GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(normalizedDirectionCurrentNodeToMouse,
+							rotationMatrix, m_maxTurnAngleDotProductForRoadSegments, indexOfTempNodeToPlace - 1, nextNodeInformation))
+						{
+							//check our stopping conditions
+							float newDistanceSquared = (nextNodeInformation.location - mouseWorldPos).calculateRadialDistanceSquared();
+
+							//we are getting farther away from the mouse
+							//ignore the condition if the fragment is the first one we are attempting to place
+							int numberOfFragmentsPlaced = indexOfTempNodeToPlace - m_indexOfLastPermanentNode;
+							if(newDistanceSquared > distanceSquared
+								&& numberOfFragmentsPlaced > 1)
+							{
+								--indexOfTempNodeToPlace;
+								break;
+							}
+
+							//check if we need to add a new RoadNode
+							if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+							{
+								m_tempNodes.push_back(new RoadNode());
+							}
+
+							m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
+							currentNode = m_tempNodes[indexOfTempNodeToPlace];
+						}
 					}
 				}
 
