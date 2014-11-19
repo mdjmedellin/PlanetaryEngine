@@ -1915,7 +1915,7 @@ namespace gh
 		AABB2 textRenderWindow( 0.f, windowSize.y - (m_HUDFontHeight + m_HUDLineBreakHeight), windowSize.x, windowSize.y);
 
 		//print the strength of the start tangent
-		std::string textToPrint;
+		std::string textToPrint = "MAX BEND ANGLE = " + std::to_string((long double)m_maxYawRotationDegreesForRoadSegments);
 		theRenderer.drawText( textToPrint.c_str(), "test", m_HUDFontHeight, textRenderWindow, TEXT_ALIGN_BOTTOM, toRGBA( 1.f, 1.f, 1.f ) );
 
 		//print the strength of the end tangent
@@ -1932,6 +1932,18 @@ namespace gh
 
 	void Application::keyPressed( size_t charPressed )
 	{
+		Vector3 origin;
+		Vector3 finalLocation;
+		Vector3 prevLocation;
+		Vector3 direction(1.f,0.f,0.f);
+		Vector3 desiredDirection(-1.f,0.f,0.f);
+		float currentDotProduct = 0.f;
+		float prevDotProduct = -1.f;
+		bool continueLooping = true;
+
+		Vector3 unitVector(1.f, 0.f, 0.f);
+		Vector3 rotatedVector = unitVector;
+
 		if( (char)charPressed == '~' )
 		{
 			m_openCommandConsole = !m_openCommandConsole;
@@ -1954,6 +1966,72 @@ namespace gh
 					PostQuitMessage( 0 );
 					m_stop = true;
 				}
+				break;
+
+			case 'j':
+			case 'J':
+				m_maxYawRotationDegreesForRoadSegments += 1.f;
+				m_maxYawRotationDegreesForRoadSegments = std::min(m_maxYawRotationDegreesForRoadSegments, 8.f);
+
+				//road system variables
+				rotatedVector.setPitchAndYawDegrees(m_maxYawRotationDegreesForRoadSegments, 0.f);
+
+				m_maxTurnAngleDotProductForRoadSegments = rotatedVector.DotProduct(unitVector);
+				m_roadMaxCWRotationTransformationMatrix = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
+				m_roadMaxCCWRotationTransfromationMatrix = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
+
+				//estimate the diameter for a full turn
+				while(continueLooping)
+				{
+					currentDotProduct = direction.DotProduct(desiredDirection);
+					if(currentDotProduct < prevDotProduct)
+					{
+						continueLooping = false;
+						continue;
+					}
+					else
+					{
+						prevDotProduct = currentDotProduct;
+						direction = m_roadMaxCWRotationTransformationMatrix.TransformDirection(direction);
+						prevLocation = finalLocation;
+						finalLocation += (direction * m_lengthOfFragment);
+					}
+				}
+
+				m_radiusOfRoadCircle = prevLocation.calculateRadialDistance() * .5f;
+				break;
+
+			case 'k':
+			case 'K':
+				m_maxYawRotationDegreesForRoadSegments -= 1.f;
+				m_maxYawRotationDegreesForRoadSegments = std::max(m_maxYawRotationDegreesForRoadSegments, 1.f);
+
+				//road system variables
+				rotatedVector.setPitchAndYawDegrees(m_maxYawRotationDegreesForRoadSegments, 0.f);
+
+				m_maxTurnAngleDotProductForRoadSegments = rotatedVector.DotProduct(unitVector);
+				m_roadMaxCWRotationTransformationMatrix = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
+				m_roadMaxCCWRotationTransfromationMatrix = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
+
+				//estimate the diameter for a full turn
+				while(continueLooping)
+				{
+					currentDotProduct = direction.DotProduct(desiredDirection);
+					if(currentDotProduct < prevDotProduct)
+					{
+						continueLooping = false;
+						continue;
+					}
+					else
+					{
+						prevDotProduct = currentDotProduct;
+						direction = m_roadMaxCWRotationTransformationMatrix.TransformDirection(direction);
+						prevLocation = finalLocation;
+						finalLocation += (direction * m_lengthOfFragment);
+					}
+				}
+
+				m_radiusOfRoadCircle = prevLocation.calculateRadialDistance() * .5f;
 				break;
 
 			case 'o':
