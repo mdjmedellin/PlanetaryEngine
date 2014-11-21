@@ -1422,7 +1422,7 @@ namespace gh
 	bool Application::GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(const Vector3& desiredDirection,
 		const Matrix4X4& maxRotationMatrix, float maxTurnAngleDotProduct, int indexOfLastValidNode, NodeInformation& out_info)
 	{
-		if(indexOfLastValidNode <= 1)
+		if(indexOfLastValidNode < 1)
 		{
 			return false;
 		}
@@ -1689,52 +1689,6 @@ namespace gh
 							break;
 						}
 					}
-
-					if(firstNodeToNotRequireMaxBend > 0
-						&& firstNodeToNotRequireMaxBend < m_tempNodes.size())
-					{
-						//calculate how much we want to rotate the segment
-						int numberOfNodesNotRequiredToMaxBend = m_tempNodes.size() - firstNodeToNotRequireMaxBend;
-						Vector3 directionOfFirstNodeNotRequiredToMaxBend = m_tempNodes[firstNodeToNotRequireMaxBend - 1]->m_location 
-																		- m_tempNodes[firstNodeToNotRequireMaxBend - 2]->m_location;
-						directionOfFirstNodeNotRequiredToMaxBend.normalize();
-
-						Vector3 desiredDirection = mouseWorldPos - m_tempNodes[firstNodeToNotRequireMaxBend - 1]->m_location;
-						desiredDirection.normalize();
-
-						float dotProductResult = directionOfFirstNodeNotRequiredToMaxBend.DotProduct(desiredDirection);
-						float angleBetweenVector = acosf(dotProductResult);
-
-						angleBetweenVector /= numberOfNodesNotRequiredToMaxBend;
-						Vector3 currentLocation = m_tempNodes[firstNodeToNotRequireMaxBend - 1]->m_location;
-
-						//which way are we rotating
-						//calculate the direction of the last segment
-						Vector3 normalizedDirectionOfLastSegmentRotated90DegreesCW = 
-							clockwise90DegreeRotation.TransformDirection(directionOfFirstNodeNotRequiredToMaxBend);
-
-						Vector3 normalizedDirectionCurrentNodeRoadNodeToMouse = mouseWorldPos - currentLocation;
-						normalizedDirectionCurrentNodeRoadNodeToMouse.normalize();
-
-						//check if we are rotating clockwise or counterclockwise
-						float dotProductLastSegment90CWAndDirectionCurrentNodeToMouse
-							= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeRoadNodeToMouse);
-
-						if(dotProductLastSegment90CWAndDirectionCurrentNodeToMouse > 0.f )
-						{
-							angleBetweenVector *= -1.f;
-						}
-
-						Matrix4X4 rotationVector = Matrix4X4::RotateZRadiansMatrix(angleBetweenVector);
-
-						for(int i = firstNodeToNotRequireMaxBend; i < m_tempNodes.size(); ++i)
-						{
-							directionOfFirstNodeNotRequiredToMaxBend = rotationVector.TransformDirection(directionOfFirstNodeNotRequiredToMaxBend);
-							currentLocation += directionOfFirstNodeNotRequiredToMaxBend * m_lengthOfFragment;
-							m_tempNodes[i]->m_location = currentLocation;
-						}
-					}
-
 				}
 				else
 				{
@@ -1807,6 +1761,10 @@ namespace gh
 
 							m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
 							currentNode = m_tempNodes[indexOfTempNodeToPlace];
+						}
+						else
+						{
+							--indexOfTempNodeToPlace;
 						}
 					}
 				}
@@ -2156,19 +2114,80 @@ namespace gh
 			//Free-form mode
 			if(GetMouseWorldPosWithSpecifiedZ(mouseWorldPosition, 0.f))
 			{
-				RoadNode* newRoadNode = new RoadNode(mouseWorldPosition);
-
-				if(!m_currentRoadNodeCluster)
+				RoadNode* currentRoadNode = nullptr;
+				RoadNodeCluster* currentRoadNodeCluster = nullptr;
+					
+				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode);
+				if(currentRoadNode != nullptr)
 				{
-					//create a new node holder
 					m_currentRoadNodeCluster = new RoadNodeCluster();
+
+					for(int i = 0; i < currentRoadNodeCluster->m_roadNodes.size(); ++i)
+					{
+						m_tempNodes.push_back(currentRoadNodeCluster->m_roadNodes[i]);
+
+						if(currentRoadNodeCluster->m_roadNodes[i] == currentRoadNode)
+						{
+							m_currentRoadNodeCluster->AddNode(currentRoadNode);
+							m_indexOfLastPermanentNode = i;
+							break;
+						}
+					}
+				}
+				else
+				{
+					RoadNode* newRoadNode = new RoadNode(mouseWorldPosition);
+
+					if(!m_currentRoadNodeCluster)
+					{
+						//create a new node holder
+						m_currentRoadNodeCluster = new RoadNodeCluster();
+					}
+
+					//add the nodes to the current node holder
+					m_currentRoadNodeCluster->AddNode(newRoadNode);
+					m_tempNodes.push_back(newRoadNode);
 				}
 
-				//add the nodes to the current node holder
-				m_currentRoadNodeCluster->AddNode(newRoadNode);
-				m_tempNodes.push_back(newRoadNode);
 				m_splineMode = true;
 			}
+		}
+	}
+
+	void Application::CheckForRoadNodesWithinRange(const Vector3& worldPosition, RoadNodeCluster*& out_roadNodeCluster,
+													RoadNode*& out_roadNode)
+	{
+		//get the closest node
+		float closestDistanceSquared = -1.f;
+		float currentDistanceSquared = 0.f;
+
+		//iterate through all the roadnodeClusters
+		RoadNodeCluster* currentRoadNodeCluster = nullptr;
+		RoadNode* currentRoadNode = nullptr;
+
+		for(int i = 0; i < m_roadNodeClusters.size(); ++i)
+		{
+			currentRoadNodeCluster = m_roadNodeClusters[i];
+
+			for(int j = 0; j < currentRoadNodeCluster->m_roadNodes.size(); ++j)
+			{
+				currentRoadNode = currentRoadNodeCluster->m_roadNodes[j];
+				currentDistanceSquared = (currentRoadNode->m_location - worldPosition).calculateRadialDistanceSquared();
+
+				if(currentDistanceSquared < closestDistanceSquared
+					|| closestDistanceSquared < 0.f )
+				{
+					closestDistanceSquared = currentDistanceSquared;
+					out_roadNode = currentRoadNode;
+					out_roadNodeCluster = currentRoadNodeCluster;
+				}
+			}
+		}
+
+		if( closestDistanceSquared > m_lengthOfFragmentSquared )
+		{
+			out_roadNode = nullptr;
+			out_roadNodeCluster = nullptr;
 		}
 	}
 

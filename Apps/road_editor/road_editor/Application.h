@@ -87,6 +87,8 @@ namespace gh
 		void RenderSplines();
 		void ExitSplineMode();
 		void DrawHUD();
+		void CheckForRoadNodesWithinRange(const Vector3& worldPosition, RoadNodeCluster*& currentRoadNodeCluster,
+			RoadNode*& currentRoadNode);
 		//void AddSemicirclePathNodes();
 		void drawOrigin( float lineLength );
 		void initiateDrivingSystem();
