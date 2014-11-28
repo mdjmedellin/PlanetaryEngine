@@ -84,12 +84,13 @@ namespace gh
 			const Matrix4X4& maxRotationMatrix, float maxTurnAngleDotProduct, int indexOfLastValidNode,
 			NodeInformation& out_info);
 		int AddSemiCircle(int indexOfSemiCircleStart, const Vector3& directionToBuildSemiCircle);
+		int AddQuarterCircle(int indexOfLastValidNode, const Vector3& directionToBuild);
+		void PrecalculateRoadVariables();
 		void RenderSplines();
 		void ExitSplineMode();
 		void DrawHUD();
 		void CheckForRoadNodesWithinRange(const Vector3& worldPosition, RoadNodeCluster*& currentRoadNodeCluster,
 			RoadNode*& currentRoadNode);
-		//void AddSemicirclePathNodes();
 		void drawOrigin( float lineLength );
 		void initiateDrivingSystem();
 		void initiateRoadSystem();
@@ -99,6 +100,8 @@ namespace gh
 		void CalculateFrustumPoints(const Vector3& screenCoordinates, Vector3& nearFrustumWorldCoordinates,
 			Vector3& farFrustumWorldCoordinates);
 		bool GetMouseWorldPosWithSpecifiedZ(Vector3& out_worldPos, float desiredZValue);
+		void RenderDebugNodes();
+
 
 		HWND m_hWnd;
 		HDC m_hDC;
@@ -120,6 +123,7 @@ namespace gh
 		RoadNodeCluster* m_currentRoadNodeCluster;
 		std::vector< RoadNodeCluster* > m_roadNodeClusters;
 		std::vector< RoadNode* > m_tempNodes;
+		std::vector< RoadNode* > m_debugNodesToRender;
 		float m_fovy;
 		float m_nearZ;
 		float m_farZ;
@@ -131,7 +135,7 @@ namespace gh
 		float m_maxTurnAngleDotProductForRoadSegments;
 		float m_maxYawRotationDegreesForRoadSegments;
 		Matrix4X4 m_roadMaxCWRotationTransformationMatrix;
-		Matrix4X4 m_roadMaxCCWRotationTransfromationMatrix;
+		Matrix4X4 m_roadMaxCCWRotationTransformationMatrix;
 		float m_HUDFontHeight;
 		float m_HUDLineBreakHeight;
 		float m_radiusOfRoadCircle;
