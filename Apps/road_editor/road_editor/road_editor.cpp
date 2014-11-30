@@ -219,12 +219,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pApp->updateInput( false );
 		break;
 
-	case WM_CHAR:
+	case WM_KEYDOWN:
 		g_pApp->keyPressed( wParam );
+		//g_pApp->aSyncKeyPressed();
 		break;
 
-	case WM_KEYDOWN:
-		g_pApp->aSyncKeyPressed();
+	case WM_KEYUP:
+		g_pApp->KeyReleased( wParam );
 		break;
 
 	case WM_COMMAND:

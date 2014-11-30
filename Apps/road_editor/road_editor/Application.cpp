@@ -18,6 +18,7 @@
 #include "Viewport.h"
 #include "IntersectionConnection.h"
 #include "VehicleManager.h"
+#include "KeyPadInputLogger.h"
 
 namespace
 {
@@ -65,6 +66,8 @@ namespace
 	{
 		theConsole.printNewlineToConsole( toPrint, tint );
 	}
+
+	gh::KeyPadInputLogger* s_inputLogger = new gh::KeyPadInputLogger();
 }
 
 namespace gh
@@ -178,6 +181,21 @@ namespace gh
 		glColor3f( 1.f, 1.f, 1.f );
 
 		matrixStack.PopMatrix();
+	}
+
+	Vector3 RoadNodeCluster::GetTangentOfNodeAtSpecifiedIndex( int indexOfRoadNode )
+	{
+		Vector3 tangent;
+		if(indexOfRoadNode < m_roadNodes.size() - 1)
+		{
+			tangent = m_roadNodes[indexOfRoadNode + 1]->m_location - m_roadNodes[indexOfRoadNode]->m_location;
+		}
+		else
+		{
+			tangent = m_roadNodes[indexOfRoadNode]->m_location - m_roadNodes[indexOfRoadNode - 1]->m_location;
+		}
+
+		return tangent;
 	}
 
 
@@ -1324,6 +1342,10 @@ namespace gh
 
 	void Application::updateFrame( double deltaTime )
 	{	
+		//reset input
+		UpdateKeyInput();
+		s_inputLogger->UpdateKeyStates();
+
 		if( !m_openCommandConsole && m_updateInput )
 		{
 			m_camera->updateInput();
@@ -1638,7 +1660,166 @@ namespace gh
 		}
 
 		Vector3 mouseWorldPos;
-		if(GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f))
+		bool mousePositionHitsDesiredElevation = GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f);
+
+		//Check if we need to automatically finish the road
+		RoadNodeCluster* closestRoadNodeCluster = nullptr;
+		RoadNode* closestRoadNode = nullptr;
+		int indexOfClosestRoadNode = -1;
+		CheckForRoadNodesWithinRange(mouseWorldPos, closestRoadNodeCluster, closestRoadNode, indexOfClosestRoadNode);
+		if( s_inputLogger->IsCharacterDown('Q')
+			&& closestRoadNodeCluster != nullptr )
+		{
+			//attempt to close the road
+			//find the tangent of the current node
+			Vector3 startTangent;
+			if(m_indexOfLastPermanentNode > 0)
+			{
+				startTangent = m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_tempNodes[m_indexOfLastPermanentNode - 1]->m_location;
+			}
+
+			Vector3 endTangent;
+			endTangent = closestRoadNodeCluster->GetTangentOfNodeAtSpecifiedIndex(indexOfClosestRoadNode);
+
+			startTangent.normalize();
+			endTangent.normalize();
+
+			Vector3 endDirection = endTangent;
+			Vector3 startDirection = startTangent;
+
+
+			//use the distance as the multiplier
+			float distanceBetweenPoints = (m_tempNodes[m_indexOfLastPermanentNode]->m_location - closestRoadNode->m_location).calculateRadialDistance();
+
+			startTangent *= distanceBetweenPoints;
+			endTangent *= distanceBetweenPoints;
+
+			startTangent.z = 0.f;
+			endTangent.z = 0.f;
+
+			for (int step=0; step < 50; step++)
+			{
+				float t = (float)step / (float)50;    // scale s to go from 0 to 1
+				float s = 1 - t;
+
+				float h1 =  (s * s) * ( 1.f + ( 2.f * t ) );        // calculate basis function 1
+				float h2 = (t * t) * ( 1.f + ( 2.f * s ) );              // calculate basis function 2
+				float h3 = (s * s) * t;         // calculate basis function 3
+				float h4 = -(t * t) * s;              // calculate basis function 4
+				Vector3 p = h1* m_tempNodes[m_indexOfLastPermanentNode]->m_location +                    // multiply and sum all funtions
+					h2*closestRoadNode->m_location +                    // together to build the interpolated
+					h3*startTangent +                    // point along the curve.
+					h4*endTangent;
+
+				m_debugNodesToRender.push_back(new RoadNode());
+				m_debugNodesToRender.back()->m_location = p;
+			}
+
+
+			//try to get the road to face the direction of the new node
+			//figure out what direction to bend
+			//CW or CCW
+			Vector3 distanceVector = (closestRoadNode->m_location - m_tempNodes[m_indexOfLastPermanentNode]->m_location);
+			distanceVector.normalize();
+
+			Matrix4X4 clockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
+			Matrix4X4 counterClockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
+			Matrix4X4 clockwise90DegreeRotation = Matrix4X4::RotateZDegreesMatrix(-90.f);
+
+			Vector3 distanceVectorRotated90CW = clockwise90DegreeRotation.TransformDirection(distanceVector);
+
+			Matrix4X4 rotationMatrix = clockwiseMaxRotation;
+			if(startDirection.DotProduct(distanceVectorRotated90CW) > 0.f)
+			{
+				rotationMatrix = counterClockwiseMaxRotation;
+			}
+
+			Vector3 currentDirection = startDirection;
+			//variables used to recalculate the best path to the mouse cursor
+			int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
+			int sizeOfNodeHolder = m_tempNodes.size();
+			Vector3 locationOfNextNode;
+			Vector3 currentLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+			bool keepIterating = true;
+			while(keepIterating)
+			{
+				float currentDotProduct = currentDirection.DotProduct(distanceVector);
+				if(currentDotProduct >= m_maxTurnAngleDotProductForRoadSegments)
+				{
+					//we can face the desired direction without rotating max degrees
+					currentDirection = distanceVector;
+					keepIterating = false;
+				}
+				else
+				{
+					currentDirection = rotationMatrix.TransformDirection(currentDirection);
+				}
+
+				if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+				{
+					m_tempNodes.push_back(new RoadNode());
+				}
+
+				m_tempNodes[indexOfTempNodeToPlace]->m_location = currentLocation + (currentDirection * m_lengthOfFragment);
+				currentLocation = m_tempNodes[indexOfTempNodeToPlace]->m_location;
+				++indexOfTempNodeToPlace;
+			}
+
+			Vector3 newDesiredDirection = -currentDirection;
+			Vector3 newStartDirection = -endDirection;
+			rotationMatrix = clockwiseMaxRotation;
+			distanceVectorRotated90CW = clockwise90DegreeRotation.TransformDirection(newDesiredDirection);
+			if(newStartDirection.DotProduct(distanceVectorRotated90CW) > 0.f)
+			{
+				rotationMatrix = counterClockwiseMaxRotation;
+			}
+
+			keepIterating = true;
+
+			currentLocation = closestRoadNode->m_location;
+			std::vector< RoadNode* > tempNodeHolder;
+			while(keepIterating)
+			{
+				float currentDotProduct = newStartDirection.DotProduct(newDesiredDirection);
+				if(currentDotProduct >= m_maxTurnAngleDotProductForRoadSegments)
+				{
+					//we can face the desired direction without rotating max degrees
+					currentDirection = endDirection;
+					keepIterating = false;
+				}
+				else
+				{
+					newStartDirection = rotationMatrix.TransformDirection(newStartDirection);
+				}
+
+				tempNodeHolder.push_back(new RoadNode());
+				tempNodeHolder.back()->m_location = currentLocation + (newStartDirection * m_lengthOfFragment);
+				currentLocation = tempNodeHolder.back()->m_location;
+			}
+
+			for(int i = tempNodeHolder.size() - 1; i > -1; --i)
+			{
+				if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+				{
+					m_tempNodes.push_back(new RoadNode());
+				}
+
+				m_tempNodes[indexOfTempNodeToPlace]->m_location = tempNodeHolder[i]->m_location;
+				++indexOfTempNodeToPlace;
+			}
+
+			//delete all the nodes that were created temporarily
+			for(int i = 0; i < tempNodeHolder.size(); ++i)
+			{
+				delete tempNodeHolder[i];
+			}
+
+			m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
+
+			return;
+		}
+
+		if(mousePositionHitsDesiredElevation)
 		{
 			RoadNode* currentNode = m_tempNodes[m_indexOfLastPermanentNode];
 
@@ -2003,73 +2184,78 @@ namespace gh
 
 	void Application::keyPressed( size_t charPressed )
 	{
-		Vector3 origin;
-		Vector3 finalLocation;
-		Vector3 prevLocation;
-		Vector3 direction(1.f,0.f,0.f);
-		Vector3 desiredDirection(-1.f,0.f,0.f);
-		float currentDotProduct = 0.f;
-		float prevDotProduct = -1.f;
-		bool continueLooping = true;
+		s_inputLogger->onKeyDown( static_cast<char>(charPressed) );
+	}
 
-		Vector3 unitVector(1.f, 0.f, 0.f);
-		Vector3 rotatedVector = unitVector;
+	void Application::KeyReleased( size_t charReleased )
+	{
+		s_inputLogger->onKeyUp( static_cast<char>(charReleased) );
+	}
 
-		if( (char)charPressed == '~' )
+	void Application::UpdateKeyInput()
+	{
+		if( s_inputLogger->GetCharJustPressed() == '~' )
 		{
 			m_openCommandConsole = !m_openCommandConsole;
 		}
 		else if( m_openCommandConsole )
 		{
-			theConsole.keyPressed( charPressed );
+			if( s_inputLogger->CharacterIsDown() )
+			{
+				theConsole.keyPressed( s_inputLogger->GetLastPressedChar() );
+			}
 		}
 		else
 		{
-			switch( (char)charPressed )
+			if( s_inputLogger->CharacterWasJustPressed() )
 			{
-			case 27:
-				if(m_splineMode)
+				switch( s_inputLogger->GetCharJustPressed() )
 				{
-					ExitSplineMode();
+				case 27:
+					//check that the key was not previously pressed
+					if(m_splineMode)
+					{
+						ExitSplineMode();
+					}
+					else
+					{
+						PostQuitMessage( 0 );
+						m_stop = true;
+					}
+					break;
+
+				case 'j':
+				case 'J':
+					m_maxYawRotationDegreesForRoadSegments += 1.f;
+					m_maxYawRotationDegreesForRoadSegments = std::min(m_maxYawRotationDegreesForRoadSegments, 8.f);
+					PrecalculateRoadVariables();
+					break;
+
+				case 'k':
+				case 'K':
+					m_maxYawRotationDegreesForRoadSegments -= 1.f;
+					m_maxYawRotationDegreesForRoadSegments = std::max(m_maxYawRotationDegreesForRoadSegments, 1.f);
+					PrecalculateRoadVariables();
+					break;
+
+				case 'o':
+				case 'O':
+					m_showDirectionOnTempNodes = !m_showDirectionOnTempNodes;
+					break;
+
+				case 'p':
+				case 'P':
+					m_showDirectionOnPlacedRoads = !m_showDirectionOnPlacedRoads;
+					break;
+
+				case 'm':
+				case 'M':
+					m_showSecondCurveSystem = !m_showSecondCurveSystem;
+					break;
+
+				default:
+					break;
 				}
-				else
-				{
-					PostQuitMessage( 0 );
-					m_stop = true;
-				}
-				break;
-
-			case 'j':
-			case 'J':
-				m_maxYawRotationDegreesForRoadSegments += 1.f;
-				m_maxYawRotationDegreesForRoadSegments = std::min(m_maxYawRotationDegreesForRoadSegments, 8.f);
-				PrecalculateRoadVariables();
-				break;
-
-			case 'k':
-			case 'K':
-				m_maxYawRotationDegreesForRoadSegments -= 1.f;
-				m_maxYawRotationDegreesForRoadSegments = std::max(m_maxYawRotationDegreesForRoadSegments, 1.f);
-				PrecalculateRoadVariables();
-				break;
-
-			case 'o':
-			case 'O':
-				m_showDirectionOnTempNodes = !m_showDirectionOnTempNodes;
-				break;
-
-			case 'p':
-			case 'P':
-				m_showDirectionOnPlacedRoads = !m_showDirectionOnPlacedRoads;
-				break;
-
-			case 'm':
-			case 'M':
-				m_showSecondCurveSystem = !m_showSecondCurveSystem;
-				break;
-
-			default:
-				break;
 			}
 		}
 	}
@@ -2178,7 +2364,8 @@ namespace gh
 				RoadNode* currentRoadNode = nullptr;
 				RoadNodeCluster* currentRoadNodeCluster = nullptr;
 					
-				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode);
+				int indexOfClosestNode = -1;
+				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode, indexOfClosestNode);
 				if(currentRoadNode != nullptr)
 				{
 					m_currentRoadNodeCluster = new RoadNodeCluster();
@@ -2216,7 +2403,7 @@ namespace gh
 	}
 
 	void Application::CheckForRoadNodesWithinRange(const Vector3& worldPosition, RoadNodeCluster*& out_roadNodeCluster,
-													RoadNode*& out_roadNode)
+													RoadNode*& out_roadNode, int& out_indexOfClosestNode)
 	{
 		//get the closest node
 		float closestDistanceSquared = -1.f;
@@ -2241,6 +2428,7 @@ namespace gh
 					closestDistanceSquared = currentDistanceSquared;
 					out_roadNode = currentRoadNode;
 					out_roadNodeCluster = currentRoadNodeCluster;
+					out_indexOfClosestNode = j;
 				}
 			}
 		}
@@ -2249,6 +2437,7 @@ namespace gh
 		{
 			out_roadNode = nullptr;
 			out_roadNodeCluster = nullptr;
+			out_indexOfClosestNode = -1;
 		}
 	}
 

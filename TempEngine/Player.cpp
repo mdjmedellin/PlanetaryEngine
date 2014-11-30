@@ -65,11 +65,11 @@ namespace gh
 			m_currentInputState.reset();
 			m_currentInputState.m_actorID = m_id;
 
-			if( inputInformation->isKeyPressed( 'w' ) || inputInformation->isKeyPressed( 'W' ) ) m_currentInputState.m_acceleration.y += thrustAmount;
-			if( inputInformation->isKeyPressed( 'a' ) || inputInformation->isKeyPressed( 'A' ) ) m_currentInputState.m_rotationChange += rotationAmount;
-			if( inputInformation->isKeyPressed( 'd' ) || inputInformation->isKeyPressed( 'D' ) ) m_currentInputState.m_rotationChange -= rotationAmount;
-			if( inputInformation->isKeyPressed( ' ' ) ) m_fireKeyPreviouslyDown = true;
-			if( m_fireKeyPreviouslyDown && !inputInformation->isKeyPressed( ' ' ) )
+			if( inputInformation->IsKeyPressed( 'w' ) || inputInformation->IsKeyPressed( 'W' ) ) m_currentInputState.m_acceleration.y += thrustAmount;
+			if( inputInformation->IsKeyPressed( 'a' ) || inputInformation->IsKeyPressed( 'A' ) ) m_currentInputState.m_rotationChange += rotationAmount;
+			if( inputInformation->IsKeyPressed( 'd' ) || inputInformation->IsKeyPressed( 'D' ) ) m_currentInputState.m_rotationChange -= rotationAmount;
+			if( inputInformation->IsKeyPressed( ' ' ) ) m_fireKeyPreviouslyDown = true;
+			if( m_fireKeyPreviouslyDown && !inputInformation->IsKeyPressed( ' ' ) )
 			{
 					m_currentInputState.m_readyToFire = true;
 					m_fireKeyPreviouslyDown = false;

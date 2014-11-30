@@ -54,7 +54,7 @@ namespace gh
 
 		void AddNode(RoadNode* nodeToAdd);
 		void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), bool renderDirection = false);
-
+		Vector3 GetTangentOfNodeAtSpecifiedIndex(int indexOfRoadNode);
 		std::vector<RoadNode*> m_roadNodes;
 	};
 
@@ -72,6 +72,7 @@ namespace gh
 		void toggleOrigin();
 		void updateInput( bool continueUpdating );
 		void keyPressed( size_t charPressed );
+		void KeyReleased( size_t charReleased );
 		void aSyncKeyPressed();
 		void readMouseClick(const Vector2& mouseClickLocation);
 
@@ -90,7 +91,7 @@ namespace gh
 		void ExitSplineMode();
 		void DrawHUD();
 		void CheckForRoadNodesWithinRange(const Vector3& worldPosition, RoadNodeCluster*& currentRoadNodeCluster,
-			RoadNode*& currentRoadNode);
+			RoadNode*& currentRoadNode, int& out_indexOfClosestNode);
 		void drawOrigin( float lineLength );
 		void initiateDrivingSystem();
 		void initiateRoadSystem();
@@ -101,7 +102,7 @@ namespace gh
 			Vector3& farFrustumWorldCoordinates);
 		bool GetMouseWorldPosWithSpecifiedZ(Vector3& out_worldPos, float desiredZValue);
 		void RenderDebugNodes();
-
+		void UpdateKeyInput();
 
 		HWND m_hWnd;
 		HDC m_hDC;
