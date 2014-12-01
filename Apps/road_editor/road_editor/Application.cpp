@@ -1741,14 +1741,22 @@ namespace gh
 			Vector3 locationOfNextNode;
 			Vector3 currentLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
 			bool keepIterating = true;
+			float previousDotProduct = -1;
 			while(keepIterating)
 			{
+				distanceVector = (closestRoadNode->m_location - currentLocation);
+				distanceVector.normalize();
+
 				float currentDotProduct = currentDirection.DotProduct(distanceVector);
 				if(currentDotProduct >= m_maxTurnAngleDotProductForRoadSegments)
 				{
 					//we can face the desired direction without rotating max degrees
 					currentDirection = distanceVector;
 					keepIterating = false;
+				}
+				else if(previousDotProduct > currentDotProduct)
+				{
+					break;
 				}
 				else
 				{
@@ -1757,18 +1765,24 @@ namespace gh
 
 				if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
 				{
-					m_tempNodes.push_back(new RoadNode());
+					int x = 1;
+					//m_tempNodes.push_back(new RoadNode());
 				}
 
-				m_tempNodes[indexOfTempNodeToPlace]->m_location = currentLocation + (currentDirection * m_lengthOfFragment);
+				currentLocation += ( currentDirection * m_lengthOfFragment );
+				/*m_tempNodes[indexOfTempNodeToPlace]->m_location = currentLocation + (currentDirection * m_lengthOfFragment);
 				currentLocation = m_tempNodes[indexOfTempNodeToPlace]->m_location;
-				++indexOfTempNodeToPlace;
+				++indexOfTempNodeToPlace;*/
+				previousDotProduct = currentDotProduct;
 			}
 
 			Vector3 newDesiredDirection = -currentDirection;
 			Vector3 newStartDirection = -endDirection;
 			rotationMatrix = clockwiseMaxRotation;
-			distanceVectorRotated90CW = clockwise90DegreeRotation.TransformDirection(newDesiredDirection);
+			distanceVector = (currentLocation - closestRoadNode->m_location);
+			distanceVector.normalize();
+
+			distanceVectorRotated90CW = clockwise90DegreeRotation.TransformDirection(distanceVector);
 			if(newStartDirection.DotProduct(distanceVectorRotated90CW) > 0.f)
 			{
 				rotationMatrix = counterClockwiseMaxRotation;
@@ -1797,6 +1811,105 @@ namespace gh
 				currentLocation = tempNodeHolder.back()->m_location;
 			}
 
+			
+
+
+			//at this moment attempt to insert one to the end and one to the front of the road until they agree in the direction
+			Vector3 currentStartLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+			Vector3 currentStartDirection = startTangent;
+			currentStartDirection.normalize();
+			Vector3 currentEndLocation;
+			Vector3 currentEndDirection;
+			if(tempNodeHolder.size() > 0)
+			{
+				currentEndLocation = tempNodeHolder.back()->m_location;
+				if(tempNodeHolder.size() == 1)
+				{
+					currentEndDirection = currentEndLocation - closestRoadNode->m_location;
+				}
+				else
+				{
+					currentEndDirection = tempNodeHolder[tempNodeHolder.size() - 1]->m_location - tempNodeHolder[tempNodeHolder.size() - 2]->m_location;
+				}
+			}
+			else
+			{
+				currentEndDirection = endTangent;
+			}
+
+			currentEndDirection.normalize(); 
+
+			std::vector <RoadNode* > tempStartNodes;
+
+			keepIterating = true;
+			int maxIterations = 100;
+			while(keepIterating 
+				&& maxIterations > 0)
+			{
+				Vector3 currentDesiredEndDirection = currentStartLocation - currentEndLocation;
+				currentDesiredEndDirection.normalize();
+
+				Vector3 currentDesiredEndDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredEndDirection);
+				Matrix4X4 currentEndDirectionRotationMatrix = clockwiseMaxRotation;
+				
+				if(currentEndDirection.DotProduct(currentDesiredEndDirectionRotated90CW) > 0.f)
+				{
+					currentEndDirectionRotationMatrix = counterClockwiseMaxRotation;
+				}
+				
+				Vector3 currentDesiredStartDirection = -currentDesiredEndDirection;
+				Vector3 currentDesiredStartDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredStartDirection);
+				Matrix4X4 currentStartDirectionRotationMatrix = clockwiseMaxRotation;
+
+				if(currentStartDirection.DotProduct(currentDesiredStartDirectionRotated90CW) > 0.f)
+				{
+					currentStartDirectionRotationMatrix = counterClockwiseMaxRotation;
+				}
+
+				int nodesAdded = 0;
+				//start with the end location node
+				if(currentEndDirection.DotProduct(currentDesiredEndDirection) < m_maxTurnAngleDotProductForRoadSegments)
+				{
+					//int x = 1;
+					currentEndDirection = currentEndDirectionRotationMatrix.TransformDirection(currentEndDirection);
+					//add a new segment rotated towards the final direction
+					tempNodeHolder.push_back(new RoadNode());
+					tempNodeHolder.back()->m_location = currentEndLocation + (currentEndDirection * m_lengthOfFragment);
+					currentEndLocation = tempNodeHolder.back()->m_location;
+
+					++nodesAdded;
+				}
+
+				if(currentStartDirection.DotProduct(currentDesiredStartDirection) < m_maxTurnAngleDotProductForRoadSegments)
+				{
+					currentStartDirection = currentStartDirectionRotationMatrix.TransformDirection(currentStartDirection);
+					//add a new segment rotated towards the final direction
+					tempStartNodes.push_back(new RoadNode());
+					tempStartNodes.back()->m_location = currentStartLocation + (currentStartDirection * m_lengthOfFragment);
+					currentStartLocation = tempStartNodes.back()->m_location;
+
+					++nodesAdded;
+				}
+
+				if(nodesAdded == 0)
+				{
+					break;
+				}
+
+				--maxIterations;
+			}
+
+			for(int i = 0; i < tempStartNodes.size(); ++i)
+			{
+				if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
+				{
+					m_tempNodes.push_back(new RoadNode());
+				}
+
+				m_tempNodes[indexOfTempNodeToPlace]->m_location = tempStartNodes[i]->m_location;
+				++indexOfTempNodeToPlace;
+			}
+
 			for(int i = tempNodeHolder.size() - 1; i > -1; --i)
 			{
 				if(indexOfTempNodeToPlace >= sizeOfNodeHolder)
@@ -1812,6 +1925,11 @@ namespace gh
 			for(int i = 0; i < tempNodeHolder.size(); ++i)
 			{
 				delete tempNodeHolder[i];
+			}
+
+			for(int i = 0; i < tempStartNodes.size(); ++i)
+			{
+				delete tempStartNodes[i];
 			}
 
 			m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
