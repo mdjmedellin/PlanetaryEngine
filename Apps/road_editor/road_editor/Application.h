@@ -89,6 +89,7 @@ namespace gh
 
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
 		void AddIncomingRoadNode(RoadNode* incomingRoadNode);
+		void AddOutgoingRoadNode(RoadNode* outgoingRoadNode);
 
 		std::map< RoadNode*, std::vector< RoadNode* > > m_intersectionConnectionsMap;
 	};
@@ -168,6 +169,9 @@ namespace gh
 		RoadNode* m_intersectionNode;
 		RoadNodeCluster* m_intersectionRoadNodeCluster;
 		int m_intersectionNodeIndex;
+		RoadNode* m_forkIntersectionNode;
+		RoadNodeCluster* m_roadNodeClusterToSpawnFork;
+		int m_indexOfForkNode;
 		std::vector< RoadNodeCluster* > m_roadNodeClusters;
 		std::vector< RoadNodeIntersection* > m_intersectionNodes;
 		std::vector< RoadNode* > m_tempNodes;
@@ -190,6 +194,7 @@ namespace gh
 		bool m_showSecondCurveSystem;
 		bool m_showDirectionOnPlacedRoads;
 		bool m_showDirectionOnTempNodes;
+		bool m_addRoadOnExit;
 	};
 	//=================================================================================================
 	///////////////////////////////////////////////////////////////////////////////////////////////////

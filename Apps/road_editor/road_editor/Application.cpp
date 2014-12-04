@@ -141,6 +141,16 @@ namespace gh
 		m_previousNodes.push_back(incomingRoadNode);
 	}
 
+	void RoadNodeIntersection::AddOutgoingRoadNode(RoadNode* outgoingRoadNode)
+	{
+		for(int i = 0; i < m_previousNodes.size(); ++i)
+		{
+			m_intersectionConnectionsMap[m_previousNodes[i]].push_back(outgoingRoadNode);
+		}
+
+		m_nextNodes.push_back(outgoingRoadNode);
+	}
+
 	void RoadNodeCluster::AddNode(RoadNode* nodeToAdd)
 	{
 		m_roadNodes.push_back(nodeToAdd);
@@ -300,6 +310,10 @@ namespace gh
 		,	m_intersectionNode(nullptr)
 		,	m_intersectionRoadNodeCluster(nullptr)
 		,	m_intersectionNodeIndex(-1)
+		,	m_addRoadOnExit(false)
+		,	m_forkIntersectionNode(nullptr)
+		,	m_roadNodeClusterToSpawnFork(nullptr)
+		,	m_indexOfForkNode(-1)
 	{
 		//initialize glew
 		glewInit();
@@ -2703,9 +2717,17 @@ namespace gh
 				//check if we are creating a new intersection
 				if(m_intersectionNode)
 				{
-					RoadNodeIntersection* newIntersection  = ConvertNodeToIntersection(m_intersectionRoadNodeCluster, m_intersectionNodeIndex);
+					RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_intersectionRoadNodeCluster, m_intersectionNodeIndex);
 					newIntersection->AddIncomingRoadNode(m_currentRoadNodeCluster->m_roadNodes[m_indexOfLastPermanentNode]);
 					ExitSplineMode();
+				}
+				else if(m_forkIntersectionNode)
+				{
+					RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterToSpawnFork, m_indexOfForkNode);
+					newIntersection->AddOutgoingRoadNode(m_currentRoadNodeCluster->m_roadNodes[0]);
+					m_forkIntersectionNode = nullptr;
+					m_roadNodeClusterToSpawnFork = nullptr;
+					m_indexOfForkNode = -1;
 				}
 			}
 		}
@@ -2721,18 +2743,31 @@ namespace gh
 				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode, indexOfClosestNode);
 				if(currentRoadNode != nullptr)
 				{
-					m_currentRoadNodeCluster = new RoadNodeCluster();
-
 					for(int i = 0; i < currentRoadNodeCluster->m_roadNodes.size(); ++i)
 					{
 						m_tempNodes.push_back(currentRoadNodeCluster->m_roadNodes[i]);
 
 						if(currentRoadNodeCluster->m_roadNodes[i] == currentRoadNode)
 						{
-							m_currentRoadNodeCluster->AddNode(currentRoadNode);
 							m_indexOfLastPermanentNode = i;
 							break;
 						}
+					}
+
+					//check if this is going to become an intersection node
+					if(currentRoadNode->m_nextNodes.empty())
+					{
+						//we know this is the end node, meaning that the currentRoadNode is not going to become an intersection
+						m_currentRoadNodeCluster = currentRoadNodeCluster;
+						m_addRoadOnExit = false;
+					}
+					else
+					{
+						m_currentRoadNodeCluster = new RoadNodeCluster();
+						m_addRoadOnExit = true;
+						m_forkIntersectionNode = currentRoadNode;
+						m_roadNodeClusterToSpawnFork = currentRoadNodeCluster;
+						m_indexOfForkNode = indexOfClosestNode;
 					}
 				}
 				else
@@ -2745,6 +2780,7 @@ namespace gh
 						m_currentRoadNodeCluster = new RoadNodeCluster();
 					}
 
+					m_addRoadOnExit = true;
 					//add the node to the current node holder
 					m_currentRoadNodeCluster->AddNode(newRoadNode);
 					m_tempNodes.push_back(newRoadNode);
@@ -2798,9 +2834,13 @@ namespace gh
 	{
 		if(m_splineMode 
 			&& m_currentRoadNodeCluster
-			&& m_currentRoadNodeCluster->m_roadNodes.size() > 1 )
+			&& m_currentRoadNodeCluster->m_roadNodes.size() > 1)
 		{
-			AddRoad(m_currentRoadNodeCluster);
+			if(m_addRoadOnExit)
+			{
+				AddRoad(m_currentRoadNodeCluster);
+			}
+
 			m_currentRoadNodeCluster = nullptr;
 		}
 
@@ -2822,6 +2862,9 @@ namespace gh
 		m_indexOfLastPermanentNode = 0;
 		m_indexOfLastTempNode = 0;
 		m_splineMode = false;
+		m_forkIntersectionNode = nullptr;
+		m_roadNodeClusterToSpawnFork = nullptr;
+		m_indexOfForkNode = -1;
 	}
 
 	bool Application::GetMouseWorldPosWithSpecifiedZ( Vector3& out_worldPos, float desiredZValue )
