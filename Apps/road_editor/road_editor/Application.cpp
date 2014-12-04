@@ -94,6 +94,53 @@ namespace gh
 		m_location = newLocation;
 	}
 
+	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/ )
+	{
+		matrixStack.PushMatrix();
+		matrixStack.Translate(m_location);
+
+		glLoadMatrixf( matrixStack.GetTopMatrixFV() );
+
+		Rgba myColor = Rgba::WHITE;
+		myColor.m_R = 0.5f;
+		myColor.m_G = 0.f;
+		myColor.m_B = 0.5f;
+
+		AABB2 test(-1, -1, 1, 1);
+		theRenderer.renderQuad(test, myColor.getVector4(), nullptr);
+
+		matrixStack.PopMatrix();
+
+		glLoadMatrixf(matrixStack.GetTopMatrixFV());
+		glBegin(GL_LINES);
+		{
+			glColor3f(0.f,0.5f,0.5f);
+
+			Vector3 currentNodeLocation;
+			for(int i = 0; i < m_previousNodes.size(); ++i)
+			{
+				currentNodeLocation = m_previousNodes[i]->m_location;
+				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+				glVertex3f(m_location.x, m_location.y, m_location.z);
+			}
+
+			glColor3f(0.5f, 0.5f, 0.f);
+			for(int i = 0; i < m_nextNodes.size(); ++i)
+			{
+				currentNodeLocation = m_nextNodes[i]->m_location;
+				glVertex3f(m_location.x, m_location.y, m_location.z);
+				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+			}
+		}
+		glEnd();
+	}
+
+	void RoadNodeIntersection::AddIncomingRoadNode(RoadNode* incomingRoadNode)
+	{
+		m_intersectionConnectionsMap[incomingRoadNode] = m_nextNodes;
+		m_previousNodes.push_back(incomingRoadNode);
+	}
+
 	void RoadNodeCluster::AddNode(RoadNode* nodeToAdd)
 	{
 		m_roadNodes.push_back(nodeToAdd);
@@ -198,6 +245,23 @@ namespace gh
 		return tangent;
 	}
 
+	void RoadNodeCluster::InitiateNodeConnections()
+	{
+		RoadNode* prevNode = nullptr;
+
+		for(int nodeIndex = 0; nodeIndex < m_roadNodes.size(); ++nodeIndex)
+		{
+			if(prevNode)
+			{
+				prevNode->m_nextNodes.push_back(m_roadNodes[nodeIndex]);
+			}
+
+			m_roadNodes[nodeIndex]->m_previousNodes.push_back(prevNode);
+
+			prevNode = m_roadNodes[nodeIndex];
+		}
+	}
+
 
 	Application::Application( HWND handleWnd, HDC handleDC )
 		:	m_hWnd( handleWnd )
@@ -233,6 +297,9 @@ namespace gh
 		,	m_showSecondCurveSystem(false)
 		,	m_showDirectionOnPlacedRoads(false)
 		,	m_showDirectionOnTempNodes(false)
+		,	m_intersectionNode(nullptr)
+		,	m_intersectionRoadNodeCluster(nullptr)
+		,	m_intersectionNodeIndex(-1)
 	{
 		//initialize glew
 		glewInit();
@@ -1799,13 +1866,10 @@ namespace gh
 		bool mousePositionHitsDesiredElevation = GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f);
 
 		//Check if we need to automatically finish the road
-		RoadNodeCluster* closestRoadNodeCluster = nullptr;
-		RoadNode* closestRoadNode = nullptr;
-		int indexOfClosestRoadNode = -1;
-		CheckForRoadNodesWithinRange(mouseWorldPos, closestRoadNodeCluster, closestRoadNode, indexOfClosestRoadNode);
+		CheckForRoadNodesWithinRange(mouseWorldPos, m_intersectionRoadNodeCluster, m_intersectionNode, m_intersectionNodeIndex);
 		
 		if( s_inputLogger->IsCharacterDown('Q')
-			&& closestRoadNodeCluster != nullptr )
+			&& m_intersectionRoadNodeCluster != nullptr )
 		{
 			//attempt to close the road
 			//find the tangent of the current node
@@ -1816,7 +1880,7 @@ namespace gh
 			}
 
 			Vector3 endTangent;
-			endTangent = closestRoadNodeCluster->GetTangentOfNodeAtSpecifiedIndex(indexOfClosestRoadNode);
+			endTangent = m_intersectionRoadNodeCluster->GetTangentOfNodeAtSpecifiedIndex(m_intersectionNodeIndex);
 
 			startTangent.normalize();
 			endTangent.normalize();
@@ -1828,7 +1892,7 @@ namespace gh
 
 			//NOTE: The following is just to display the temporary curve created by the hermite spline equation
 			//use the distance as the multiplier
-			float distanceBetweenPoints = (m_tempNodes[m_indexOfLastPermanentNode]->m_location - closestRoadNode->m_location).calculateRadialDistance();
+			float distanceBetweenPoints = (m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_intersectionNode->m_location).calculateRadialDistance();
 
 			startTangent *= distanceBetweenPoints;
 			endTangent *= distanceBetweenPoints;
@@ -1846,7 +1910,7 @@ namespace gh
 				float h3 = (s * s) * t;         // calculate basis function 3
 				float h4 = -(t * t) * s;              // calculate basis function 4
 				Vector3 p = h1* m_tempNodes[m_indexOfLastPermanentNode]->m_location +                    // multiply and sum all funtions
-					h2*closestRoadNode->m_location +                    // together to build the interpolated
+					h2*m_intersectionNode->m_location +                    // together to build the interpolated
 					h3*startTangent +                    // point along the curve.
 					h4*endTangent;
 
@@ -1859,10 +1923,9 @@ namespace gh
 			//figure out what direction to bend
 			//CW or CCW
 			std::vector< RoadNode* > localNodeContainer;
-			AddNodesToFaceSpecifiedLocation(closestRoadNode->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
+			AddNodesToFaceSpecifiedLocation(m_intersectionNode->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
 								startDirection, localNodeContainer);
 
-			
 			Vector3 endLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
 			int nodeContainerSize = localNodeContainer.size();
 
@@ -1884,7 +1947,7 @@ namespace gh
 
 			Vector3 newStartDirection = -endDirection;
 
-			RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(closestRoadNode->m_location, 
+			RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(m_intersectionNode->m_location, 
 				newStartDirection, endLocation);
 
 			//delete the nodes and empty the array of nodes created temporarily
@@ -1894,11 +1957,11 @@ namespace gh
 			}
 			localNodeContainer.clear();
 
-			AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, closestRoadNode->m_location,
+			AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, m_intersectionNode->m_location,
 				localNodeContainer, directionToRotate);
 
 			Vector3 currentEndDirection = -endTangent;
-			endLocation = closestRoadNode->m_location;
+			endLocation = m_intersectionNode->m_location;
 			nodeContainerSize = localNodeContainer.size();
 			if(nodeContainerSize > 1)
 			{
@@ -1910,7 +1973,7 @@ namespace gh
 			{
 				endLocation = localNodeContainer[0]->m_location;
 
-				currentEndDirection = endLocation - closestRoadNode->m_location;
+				currentEndDirection = endLocation - m_intersectionNode->m_location;
 			}
 			currentEndDirection.normalize();
 
@@ -1922,7 +1985,7 @@ namespace gh
 			Vector3 currentStartLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
 			Vector3 currentEndLocation = endLocation;
 			bool keepIterating = true;
-			int maxIterations = 100;
+			int maxIterations = 100;		//There needs to be a better way to identify cases where one a connection cannot be made
 
 			Matrix4X4 clockwise90DegreeRotation = Matrix4X4::RotateZDegreesMatrix(-90.f);
 			Matrix4X4 clockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
@@ -1982,6 +2045,22 @@ namespace gh
 				}
 
 				--maxIterations;
+			}
+
+			if(maxIterations <= 0)
+			{
+				for(int i = 0; i < localNodeContainer.size(); ++i)
+				{
+					delete localNodeContainer[i];
+				}
+
+				for(int i = 0; i < tempStartNodes.size(); ++i)
+				{
+					delete tempStartNodes[i];
+				}
+
+				m_indexOfLastTempNode = m_indexOfLastPermanentNode;
+				return;
 			}
 
 			int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
@@ -2294,6 +2373,12 @@ namespace gh
 			m_roadNodeClusters[i]->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
 		}
 
+		//render the intersection nodes
+		for(int i = 0; i < m_intersectionNodes.size(); ++i)
+		{
+			m_intersectionNodes[i]->Render(m_matrixStack);
+		}
+
 		std::vector< NodeInformation > arrowheads;
 		NodeInformation currentArrowHeadInformation;
 
@@ -2538,6 +2623,61 @@ namespace gh
 		delete m_viewport;
 	}
 
+	bool Application::AddRoad(RoadNodeCluster* roadToAdd)
+	{
+		if(!roadToAdd->m_roadNodes.empty())
+		{
+			roadToAdd->InitiateNodeConnections();
+			m_roadNodeClusters.push_back(roadToAdd);
+
+			return true;
+		}
+
+		return false;
+	}
+
+	RoadNodeIntersection* Application::ConvertNodeToIntersection(RoadNodeCluster* intersectionRoadNodeCluster, int intersectionNodeIndex)
+	{
+		//find the road node cluster
+		int roadNodeClusterIndex = 0;
+		for(; roadNodeClusterIndex < m_roadNodeClusters.size(); ++roadNodeClusterIndex)
+		{
+			if(m_roadNodeClusters[roadNodeClusterIndex] == intersectionRoadNodeCluster)
+			{
+				break;
+			}
+		}
+
+		//now that we have the index of the road node cluster, lets split the road node
+		//there are two edgecases
+		//connecting to the first node
+		//connecting to the last node
+		//we will take care of those edgecases later
+
+		RoadNodeCluster* roadBeforeIntersection = new RoadNodeCluster();
+		RoadNodeCluster* roadAfterIntersection = new RoadNodeCluster();
+
+		for(int nodeIndex = 0; nodeIndex < intersectionNodeIndex; ++nodeIndex)
+		{
+			roadBeforeIntersection->AddNode(intersectionRoadNodeCluster->m_roadNodes[nodeIndex]);
+		}
+
+		for(int nodeIndex = intersectionNodeIndex + 1; nodeIndex < intersectionRoadNodeCluster->m_roadNodes.size(); ++nodeIndex)
+		{
+			roadAfterIntersection->AddNode(intersectionRoadNodeCluster->m_roadNodes[nodeIndex]);
+		}
+
+		m_roadNodeClusters.erase(m_roadNodeClusters.begin() + roadNodeClusterIndex);
+		RoadNodeIntersection* newIntersection = new RoadNodeIntersection(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex]);
+
+		//check the size of each new road
+		AddRoad(roadAfterIntersection);
+		AddRoad(roadBeforeIntersection);
+
+		m_intersectionNodes.push_back(newIntersection);
+		return newIntersection;
+	}
+
 	void Application::readMouseClick(const Vector2& mouseClickLocation)
 	{
 		Vector3 mouseWorldPosition;
@@ -2559,6 +2699,14 @@ namespace gh
 				}
 
 				m_indexOfLastPermanentNode = m_indexOfLastTempNode;
+
+				//check if we are creating a new intersection
+				if(m_intersectionNode)
+				{
+					RoadNodeIntersection* newIntersection  = ConvertNodeToIntersection(m_intersectionRoadNodeCluster, m_intersectionNodeIndex);
+					newIntersection->AddIncomingRoadNode(m_currentRoadNodeCluster->m_roadNodes[m_indexOfLastPermanentNode]);
+					ExitSplineMode();
+				}
 			}
 		}
 		else
@@ -2652,7 +2800,7 @@ namespace gh
 			&& m_currentRoadNodeCluster
 			&& m_currentRoadNodeCluster->m_roadNodes.size() > 1 )
 		{
-			m_roadNodeClusters.push_back(m_currentRoadNodeCluster);
+			AddRoad(m_currentRoadNodeCluster);
 			m_currentRoadNodeCluster = nullptr;
 		}
 

@@ -9,6 +9,7 @@
 #include "Vector3.hpp"
 #include "Vector4.h"
 #include "Rgba.h"
+#include <map>
 //==========================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -48,9 +49,11 @@ namespace gh
 		{};
 
 		void SetLocation(const Vector3& newLocation);
-		void Render(MatrixStack& matrixStack, const Vector3& nodeColor);
+		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
 
 		Vector3 m_location;
+		std::vector< RoadNode* > m_previousNodes;
+		std::vector< RoadNode* > m_nextNodes;
 	};
 
 	struct RoadNodeCluster
@@ -61,7 +64,33 @@ namespace gh
 		void AddNode(RoadNode* nodeToAdd);
 		void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), bool renderDirection = false);
 		Vector3 GetTangentOfNodeAtSpecifiedIndex(int indexOfRoadNode);
+		void InitiateNodeConnections();
+
 		std::vector<RoadNode*> m_roadNodes;
+	};
+
+	struct RoadNodeIntersection : public RoadNode
+	{
+		RoadNodeIntersection(const RoadNode* roadNode)
+			:	RoadNode()
+		{
+			if(roadNode)
+			{
+				m_previousNodes = roadNode->m_previousNodes;
+				m_nextNodes = roadNode->m_nextNodes;
+				m_location = roadNode->m_location;
+
+				for(int prevNodeIndex = 0; prevNodeIndex < m_previousNodes.size(); ++prevNodeIndex)
+				{
+					m_intersectionConnectionsMap[m_previousNodes[prevNodeIndex]] = m_nextNodes;
+				}
+			}
+		};
+
+		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
+		void AddIncomingRoadNode(RoadNode* incomingRoadNode);
+
+		std::map< RoadNode*, std::vector< RoadNode* > > m_intersectionConnectionsMap;
 	};
 
 
@@ -115,6 +144,8 @@ namespace gh
 		bool GetMouseWorldPosWithSpecifiedZ(Vector3& out_worldPos, float desiredZValue);
 		void RenderDebugNodes();
 		void UpdateKeyInput();
+		RoadNodeIntersection* ConvertNodeToIntersection(RoadNodeCluster* intersectionRoadNodeCluster, int intersectionNodeIndex);
+		bool AddRoad(RoadNodeCluster* roadToAdd);
 
 		HWND m_hWnd;
 		HDC m_hDC;
@@ -134,7 +165,11 @@ namespace gh
 		VehicleManager* m_vehicleManager;
 		std::vector< Vehicle* > m_vehicles;
 		RoadNodeCluster* m_currentRoadNodeCluster;
+		RoadNode* m_intersectionNode;
+		RoadNodeCluster* m_intersectionRoadNodeCluster;
+		int m_intersectionNodeIndex;
 		std::vector< RoadNodeCluster* > m_roadNodeClusters;
+		std::vector< RoadNodeIntersection* > m_intersectionNodes;
 		std::vector< RoadNode* > m_tempNodes;
 		std::vector< RoadNode* > m_debugNodesToRender;
 		float m_fovy;
