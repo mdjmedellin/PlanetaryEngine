@@ -25,6 +25,12 @@ namespace gh
 	//================================================================================
 	//////////////////////////////////////////////////////////////////////////////////
 
+	enum RotationDirection
+	{
+		Rotate_CW,
+		Rotate_CCW
+	};
+
 	struct NodeInformation
 	{
 		Vector3 location;
@@ -86,6 +92,12 @@ namespace gh
 			NodeInformation& out_info);
 		int AddSemiCircle(int indexOfSemiCircleStart, const Vector3& directionToBuildSemiCircle);
 		int AddQuarterCircle(int indexOfLastValidNode, const Vector3& directionToBuild);
+		int AddNodesToFaceSpecifiedLocation(const Vector3& locationToFace, const Vector3& startingLocation,
+			const Vector3& startingDirection, std::vector< RoadNode* >& nodeContainer, int indexOfNodeToPlace = 0);
+		int AddNodesToFaceSpecifiedDirection(const Vector3& directionToFace, const Vector3& startingDirection,
+			const Vector3& startingLocation, std::vector< RoadNode* >& nodeContainer, RotationDirection directionToRotate = Rotate_CW, int indexOfNodeToPlace = 0);
+		RotationDirection GetBestWayToRotateToFaceLocation(const Vector3& startLocation, const Vector3& startDirection,
+			const Vector3& endLocation);
 		void PrecalculateRoadVariables();
 		void RenderSplines();
 		void ExitSplineMode();
