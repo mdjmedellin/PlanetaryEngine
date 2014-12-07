@@ -49,7 +49,10 @@ namespace gh
 		{};
 
 		void SetLocation(const Vector3& newLocation);
-		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
+		void AddPreviousNode(RoadNode* nodeToAdd);
+		void AddNextNode(RoadNode* nodeToAdd);
+		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
+		virtual Vector3 GetTangentOfNode();
 
 		Vector3 m_location;
 		std::vector< RoadNode* > m_previousNodes;
@@ -87,7 +90,7 @@ namespace gh
 			}
 		};
 
-		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f));
+		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
 		void AddIncomingRoadNode(RoadNode* incomingRoadNode);
 		void AddOutgoingRoadNode(RoadNode* outgoingRoadNode);
 
@@ -125,7 +128,8 @@ namespace gh
 		int AddNodesToFaceSpecifiedLocation(const Vector3& locationToFace, const Vector3& startingLocation,
 			const Vector3& startingDirection, std::vector< RoadNode* >& nodeContainer, int indexOfNodeToPlace = 0);
 		int AddNodesToFaceSpecifiedDirection(const Vector3& directionToFace, const Vector3& startingDirection,
-			const Vector3& startingLocation, std::vector< RoadNode* >& nodeContainer, RotationDirection directionToRotate = Rotate_CW, int indexOfNodeToPlace = 0);
+			const Vector3& startingLocation, std::vector< RoadNode* >& nodeContainer, RotationDirection directionToRotate = Rotate_CW,
+			int indexOfNodeToPlace = 0);
 		RotationDirection GetBestWayToRotateToFaceLocation(const Vector3& startLocation, const Vector3& startDirection,
 			const Vector3& endLocation);
 		void PrecalculateRoadVariables();
@@ -134,6 +138,8 @@ namespace gh
 		void DrawHUD();
 		void CheckForRoadNodesWithinRange(const Vector3& worldPosition, RoadNodeCluster*& currentRoadNodeCluster,
 			RoadNode*& currentRoadNode, int& out_indexOfClosestNode);
+		void CheckForIntersectionNodesWithinRange(const Vector3& worldPosition, RoadNodeIntersection*& out_intersectionNode,
+			int& out_indexOfIntersectionNode);
 		void drawOrigin( float lineLength );
 		void initiateDrivingSystem();
 		void initiateRoadSystem();
@@ -147,6 +153,7 @@ namespace gh
 		void UpdateKeyInput();
 		RoadNodeIntersection* ConvertNodeToIntersection(RoadNodeCluster* intersectionRoadNodeCluster, int intersectionNodeIndex);
 		bool AddRoad(RoadNodeCluster* roadToAdd);
+
 
 		HWND m_hWnd;
 		HDC m_hDC;
@@ -166,8 +173,9 @@ namespace gh
 		VehicleManager* m_vehicleManager;
 		std::vector< Vehicle* > m_vehicles;
 		RoadNodeCluster* m_currentRoadNodeCluster;
-		RoadNode* m_intersectionNode;
-		RoadNodeCluster* m_intersectionRoadNodeCluster;
+		RoadNodeCluster* m_roadNodeClusterInRange;
+		RoadNode* m_roadNodeInRange;
+		RoadNodeIntersection* m_intersectionNodeInRange;
 		int m_intersectionNodeIndex;
 		RoadNode* m_forkIntersectionNode;
 		RoadNodeCluster* m_roadNodeClusterToSpawnFork;

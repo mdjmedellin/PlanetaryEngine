@@ -72,7 +72,7 @@ namespace
 
 namespace gh
 {
-	void RoadNode::Render(MatrixStack& matrixStack, const Vector3& nodeColor)
+	void RoadNode::Render(MatrixStack& matrixStack, const Vector3& nodeColor, float sizeMultiplier)
 	{
 		matrixStack.PushMatrix();
 		matrixStack.Translate(m_location);
@@ -84,8 +84,8 @@ namespace gh
 		myColor.m_G = nodeColor.y;
 		myColor.m_B = nodeColor.z;
 
-		AABB2 test(-1, -1, 1, 1);
-		theRenderer.renderQuad(test, myColor.getVector4(), nullptr);
+		AABB2 renderQuad(-1.f * sizeMultiplier, -1.f * sizeMultiplier, 1.f * sizeMultiplier, 1.f * sizeMultiplier);
+		theRenderer.renderQuad(renderQuad, myColor.getVector4(), nullptr);
 		matrixStack.PopMatrix();
 	}
 
@@ -94,7 +94,54 @@ namespace gh
 		m_location = newLocation;
 	}
 
-	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/ )
+	void RoadNode::AddNextNode(RoadNode* nodeToAdd)
+	{
+		//check that the node is not in our list
+		for(int i = 0; i < m_nextNodes.size(); ++i)
+		{
+			if(m_nextNodes[i] == nodeToAdd)
+			{
+				return;
+			}
+		}
+
+		m_nextNodes.push_back(nodeToAdd);
+	}
+
+	void RoadNode::AddPreviousNode(RoadNode* nodeToAdd)
+	{
+		//check that the node is not in our list
+		for(int i = 0; i < m_previousNodes.size(); ++i)
+		{
+			if(m_previousNodes[i] == nodeToAdd)
+			{
+				return;
+			}
+		}
+
+		m_previousNodes.push_back(nodeToAdd);
+	}
+
+	Vector3 RoadNode::GetTangentOfNode()
+	{
+		Vector3 tangent;
+
+		if( !m_previousNodes.empty()
+			&& m_previousNodes[0] != nullptr )
+		{
+			tangent = m_location - m_previousNodes[0]->m_location;
+		}
+		else
+		{
+			tangent = m_nextNodes[0]->m_location - m_location;
+		}
+
+		return tangent;
+	}
+
+	//TODO:
+	//Intersections should not have a null incoming, nor a null outgoing node
+	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/, float sizeMultiplier )
 	{
 		matrixStack.PushMatrix();
 		matrixStack.Translate(m_location);
@@ -119,17 +166,23 @@ namespace gh
 			Vector3 currentNodeLocation;
 			for(int i = 0; i < m_previousNodes.size(); ++i)
 			{
-				currentNodeLocation = m_previousNodes[i]->m_location;
-				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
-				glVertex3f(m_location.x, m_location.y, m_location.z);
+				if(m_previousNodes[i] != nullptr)
+				{
+					currentNodeLocation = m_previousNodes[i]->m_location;
+					glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+					glVertex3f(m_location.x, m_location.y, m_location.z);
+				}
 			}
 
 			glColor3f(0.5f, 0.5f, 0.f);
 			for(int i = 0; i < m_nextNodes.size(); ++i)
 			{
-				currentNodeLocation = m_nextNodes[i]->m_location;
-				glVertex3f(m_location.x, m_location.y, m_location.z);
-				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+				if(m_nextNodes[i] != nullptr)
+				{
+					currentNodeLocation = m_nextNodes[i]->m_location;
+					glVertex3f(m_location.x, m_location.y, m_location.z);
+					glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+				}
 			}
 		}
 		glEnd();
@@ -181,20 +234,31 @@ namespace gh
 			glColor3f(1.f,0.f,0.f);
 
 			Vector3 currentNodeLocation;
-			Vector3 prevNodeLocation;
-			for(int i = 1; i < m_roadNodes.size(); ++i)
+			Vector3 nextNodeLocation;
+			RoadNode* currentNode = nullptr;
+			RoadNode* nextNodePtr = nullptr;
+			for(int i = 0; i < m_roadNodes.size(); ++i)
 			{
-				currentNodeLocation = m_roadNodes[i-1]->m_location;
-				prevNodeLocation = currentNodeLocation;
-				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
-				currentNodeLocation = m_roadNodes[i]->m_location;
-				glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+				currentNode = m_roadNodes[i];
+				currentNodeLocation = currentNode->m_location;
 
+				for(int nextNodeIndex = 0; nextNodeIndex < currentNode->m_nextNodes.size(); ++nextNodeIndex)
+				{
+					nextNodePtr = currentNode->m_nextNodes[nextNodeIndex];
+
+					if(nextNodePtr)
+					{
+						nextNodeLocation = nextNodePtr->m_location;
+						glVertex3f(currentNodeLocation.x, currentNodeLocation.y, currentNodeLocation.z);
+						glVertex3f(nextNodeLocation.x, nextNodeLocation.y, nextNodeLocation.z);
+					}
+				}
+				
 				++nodeCount;
 				if(nodeCount >= nodesBetweenArrowHeads && renderDirection)
 				{
 					currentArrowHeadInformation.location = currentNodeLocation;
-					currentArrowHeadInformation.direction = currentNodeLocation - prevNodeLocation;
+					currentArrowHeadInformation.direction = nextNodeLocation - currentNodeLocation;
 					currentArrowHeadInformation.direction.normalize();
 					arrowheads.push_back(currentArrowHeadInformation);
 					nodeCount = 0;
@@ -240,6 +304,8 @@ namespace gh
 		matrixStack.PopMatrix();
 	}
 
+	//TODO
+	//Look for the cases in which this can cause an error because the index of road node is == 0
 	Vector3 RoadNodeCluster::GetTangentOfNodeAtSpecifiedIndex( int indexOfRoadNode )
 	{
 		Vector3 tangent;
@@ -263,10 +329,10 @@ namespace gh
 		{
 			if(prevNode)
 			{
-				prevNode->m_nextNodes.push_back(m_roadNodes[nodeIndex]);
+				prevNode->AddNextNode(m_roadNodes[nodeIndex]);
 			}
 
-			m_roadNodes[nodeIndex]->m_previousNodes.push_back(prevNode);
+			m_roadNodes[nodeIndex]->AddPreviousNode(prevNode);
 
 			prevNode = m_roadNodes[nodeIndex];
 		}
@@ -307,8 +373,9 @@ namespace gh
 		,	m_showSecondCurveSystem(false)
 		,	m_showDirectionOnPlacedRoads(false)
 		,	m_showDirectionOnTempNodes(false)
-		,	m_intersectionNode(nullptr)
-		,	m_intersectionRoadNodeCluster(nullptr)
+		,	m_roadNodeInRange(nullptr)
+		,	m_intersectionNodeInRange(nullptr)
+		,	m_roadNodeClusterInRange(nullptr)
 		,	m_intersectionNodeIndex(-1)
 		,	m_addRoadOnExit(false)
 		,	m_forkIntersectionNode(nullptr)
@@ -331,8 +398,8 @@ namespace gh
 
 		glEnable( GL_CULL_FACE );
 		glFrontFace( GL_CCW );
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-		glEnable(GL_BLEND);
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+		glEnable( GL_BLEND );
 
 		//load font
 		std::vector< std::string > glyphSheets;
@@ -1483,11 +1550,6 @@ namespace gh
 		else
 		{
 			DrawHUD();
-			Vector2 mouseCoords2D(m_mouseScreenCoordinates.x, m_mouseScreenCoordinates.y);
-			glLoadMatrixf( m_matrixStack.GetTopMatrixFV() );
-			theRenderer.renderQuad( AABB2( mouseCoords2D - Vector2( 10, 10 ), mouseCoords2D + Vector2(10, 10 ) ),
-				Vector4( 1.0, 1.0, 1.0, 1.0 ), NULL );
-
 		}
 
 		glEnable( GL_DEPTH_TEST );
@@ -1531,8 +1593,13 @@ namespace gh
 	{
 		for(int i = 0; i < m_debugNodesToRender.size(); ++i)
 		{
-			m_debugNodesToRender[i]->Render(m_matrixStack, Vector3(1.f, 1.f, 1.f));
+			m_debugNodesToRender[i]->Render(m_matrixStack, Vector3(1.f, 1.f, 1.f), 0.25f);
 			delete m_debugNodesToRender[i];
+		}
+
+		if(m_roadNodeInRange)
+		{
+			m_roadNodeInRange->Render(m_matrixStack, Vector3(0.94f, 1.f, 0.35));
 		}
 
 		m_debugNodesToRender.clear();
@@ -1880,10 +1947,15 @@ namespace gh
 		bool mousePositionHitsDesiredElevation = GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f);
 
 		//Check if we need to automatically finish the road
-		CheckForRoadNodesWithinRange(mouseWorldPos, m_intersectionRoadNodeCluster, m_intersectionNode, m_intersectionNodeIndex);
+		CheckForRoadNodesWithinRange(mouseWorldPos, m_roadNodeClusterInRange, m_roadNodeInRange, m_intersectionNodeIndex);
+		if(m_roadNodeInRange == nullptr)
+		{
+			CheckForIntersectionNodesWithinRange(mouseWorldPos, m_intersectionNodeInRange, m_intersectionNodeIndex);
+			m_roadNodeInRange = m_intersectionNodeInRange;
+		}
 		
 		if( s_inputLogger->IsCharacterDown('Q')
-			&& m_intersectionRoadNodeCluster != nullptr )
+			&& m_roadNodeInRange != nullptr )
 		{
 			//attempt to close the road
 			//find the tangent of the current node
@@ -1892,9 +1964,13 @@ namespace gh
 			{
 				startTangent = m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_tempNodes[m_indexOfLastPermanentNode - 1]->m_location;
 			}
+			else
+			{
+				startTangent = mouseWorldPos - m_tempNodes[0]->m_location;
+			}
 
 			Vector3 endTangent;
-			endTangent = m_intersectionRoadNodeCluster->GetTangentOfNodeAtSpecifiedIndex(m_intersectionNodeIndex);
+			endTangent = m_roadNodeInRange->GetTangentOfNode();
 
 			startTangent.normalize();
 			endTangent.normalize();
@@ -1906,7 +1982,8 @@ namespace gh
 
 			//NOTE: The following is just to display the temporary curve created by the hermite spline equation
 			//use the distance as the multiplier
-			float distanceBetweenPoints = (m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_intersectionNode->m_location).calculateRadialDistance();
+			Vector3 distanceVector = m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_roadNodeInRange->m_location;
+			float distanceBetweenPoints = distanceVector.calculateRadialDistance();
 
 			startTangent *= distanceBetweenPoints;
 			endTangent *= distanceBetweenPoints;
@@ -1919,13 +1996,13 @@ namespace gh
 				float t = (float)step / (float)50;    // scale s to go from 0 to 1
 				float s = 1 - t;
 
-				float h1 =  (s * s) * ( 1.f + ( 2.f * t ) );        // calculate basis function 1
-				float h2 = (t * t) * ( 1.f + ( 2.f * s ) );              // calculate basis function 2
-				float h3 = (s * s) * t;         // calculate basis function 3
-				float h4 = -(t * t) * s;              // calculate basis function 4
-				Vector3 p = h1* m_tempNodes[m_indexOfLastPermanentNode]->m_location +                    // multiply and sum all funtions
-					h2*m_intersectionNode->m_location +                    // together to build the interpolated
-					h3*startTangent +                    // point along the curve.
+				float h1 =  (s * s) * ( 1.f + ( 2.f * t ) );											// calculate basis function 1
+				float h2 = (t * t) * ( 1.f + ( 2.f * s ) );												// calculate basis function 2
+				float h3 = (s * s) * t;																	// calculate basis function 3
+				float h4 = -(t * t) * s;																// calculate basis function 4
+				Vector3 p = (h1 * m_tempNodes[m_indexOfLastPermanentNode]->m_location) +                // multiply and sum all funtions
+					(h2 * m_roadNodeInRange->m_location) +												// together to build the interpolated
+					h3*startTangent +																	// point along the curve.
 					h4*endTangent;
 
 				m_debugNodesToRender.push_back(new RoadNode());
@@ -1937,7 +2014,7 @@ namespace gh
 			//figure out what direction to bend
 			//CW or CCW
 			std::vector< RoadNode* > localNodeContainer;
-			AddNodesToFaceSpecifiedLocation(m_intersectionNode->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
+			AddNodesToFaceSpecifiedLocation(m_roadNodeInRange->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
 								startDirection, localNodeContainer);
 
 			Vector3 endLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
@@ -1960,8 +2037,7 @@ namespace gh
 			newDesiredDirection *= -1.f;
 
 			Vector3 newStartDirection = -endDirection;
-
-			RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(m_intersectionNode->m_location, 
+			RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(m_roadNodeInRange->m_location, 
 				newStartDirection, endLocation);
 
 			//delete the nodes and empty the array of nodes created temporarily
@@ -1971,11 +2047,11 @@ namespace gh
 			}
 			localNodeContainer.clear();
 
-			AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, m_intersectionNode->m_location,
+			AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, m_roadNodeInRange->m_location,
 				localNodeContainer, directionToRotate);
 
 			Vector3 currentEndDirection = -endTangent;
-			endLocation = m_intersectionNode->m_location;
+			endLocation = m_roadNodeInRange->m_location;
 			nodeContainerSize = localNodeContainer.size();
 			if(nodeContainerSize > 1)
 			{
@@ -1987,15 +2063,19 @@ namespace gh
 			{
 				endLocation = localNodeContainer[0]->m_location;
 
-				currentEndDirection = endLocation - m_intersectionNode->m_location;
+				currentEndDirection = endLocation - m_roadNodeInRange->m_location;
 			}
 			currentEndDirection.normalize();
 
 			Vector3 currentStartDirection = startDirection;
-
 			std::vector <RoadNode* > tempStartNodes;
 
 			Vector3 currentDesiredEndDirection;
+			Vector3 currentDesiredEndDirectionRotated90CW;
+			Matrix4X4 currentEndDirectionRotationMatrix;
+			Vector3 currentDesiredStartDirection;
+			Vector3 currentDesiredStartDirectionRotated90CW;
+			Matrix4X4 currentStartDirectionRotationMatrix;
 			Vector3 currentStartLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
 			Vector3 currentEndLocation = endLocation;
 			bool keepIterating = true;
@@ -2010,18 +2090,17 @@ namespace gh
 			{
 				currentDesiredEndDirection =  currentStartLocation - currentEndLocation;
 				currentDesiredEndDirection.normalize();
-
-				Vector3 currentDesiredEndDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredEndDirection);
-				Matrix4X4 currentEndDirectionRotationMatrix = clockwiseMaxRotation;
+				currentDesiredEndDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredEndDirection);
+				currentEndDirectionRotationMatrix = clockwiseMaxRotation;
 				
 				if(currentEndDirection.DotProduct(currentDesiredEndDirectionRotated90CW) > 0.f)
 				{
 					currentEndDirectionRotationMatrix = counterClockwiseMaxRotation;
 				}
 				
-				Vector3 currentDesiredStartDirection = -currentDesiredEndDirection;
-				Vector3 currentDesiredStartDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredStartDirection);
-				Matrix4X4 currentStartDirectionRotationMatrix = clockwiseMaxRotation;
+				currentDesiredStartDirection = -currentDesiredEndDirection;
+				currentDesiredStartDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredStartDirection);
+				currentStartDirectionRotationMatrix = clockwiseMaxRotation;
 
 				if(currentStartDirection.DotProduct(currentDesiredStartDirectionRotated90CW) > 0.f)
 				{
@@ -2032,7 +2111,6 @@ namespace gh
 				//start with the end location node
 				if(currentEndDirection.DotProduct(currentDesiredEndDirection) < m_maxTurnAngleDotProductForRoadSegments)
 				{
-					//int x = 1;
 					currentEndDirection = currentEndDirectionRotationMatrix.TransformDirection(currentEndDirection);
 					//add a new segment rotated towards the final direction
 					localNodeContainer.push_back(new RoadNode());
@@ -2117,6 +2195,7 @@ namespace gh
 			return;
 		}
 
+		m_roadNodeInRange = nullptr;
 		if(mousePositionHitsDesiredElevation)
 		{
 			RoadNode* currentNode = m_tempNodes[m_indexOfLastPermanentNode];
@@ -2653,11 +2732,12 @@ namespace gh
 	RoadNodeIntersection* Application::ConvertNodeToIntersection(RoadNodeCluster* intersectionRoadNodeCluster, int intersectionNodeIndex)
 	{
 		//find the road node cluster
-		int roadNodeClusterIndex = 0;
-		for(; roadNodeClusterIndex < m_roadNodeClusters.size(); ++roadNodeClusterIndex)
+		int roadNodeClusterIndex = -1;
+		for(int nodeIndex = 0; nodeIndex < m_roadNodeClusters.size(); ++nodeIndex)
 		{
-			if(m_roadNodeClusters[roadNodeClusterIndex] == intersectionRoadNodeCluster)
+			if(m_roadNodeClusters[nodeIndex] == intersectionRoadNodeCluster)
 			{
+				roadNodeClusterIndex = nodeIndex;
 				break;
 			}
 		}
@@ -2681,7 +2761,10 @@ namespace gh
 			roadAfterIntersection->AddNode(intersectionRoadNodeCluster->m_roadNodes[nodeIndex]);
 		}
 
-		m_roadNodeClusters.erase(m_roadNodeClusters.begin() + roadNodeClusterIndex);
+		if(roadNodeClusterIndex > -1)
+		{
+			m_roadNodeClusters.erase(m_roadNodeClusters.begin() + roadNodeClusterIndex);
+		}
 		RoadNodeIntersection* newIntersection = new RoadNodeIntersection(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex]);
 
 		//check the size of each new road
@@ -2699,46 +2782,90 @@ namespace gh
 		{
 			if( (m_indexOfLastTempNode - m_indexOfLastPermanentNode) > 0 )
 			{
-				if(!m_currentRoadNodeCluster)
-				{
-					//create a new node holder
-					m_currentRoadNodeCluster = new RoadNodeCluster();
-				}
-
 				//add all the nodes to the current road
 				for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
 				{
 					//add the nodes to the current node holder
 					m_currentRoadNodeCluster->AddNode(m_tempNodes[i]);
 				}
-
+				m_currentRoadNodeCluster->InitiateNodeConnections();
 				m_indexOfLastPermanentNode = m_indexOfLastTempNode;
 
-				//check if we are creating a new intersection
-				if(m_intersectionNode)
-				{
-					RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_intersectionRoadNodeCluster, m_intersectionNodeIndex);
-					newIntersection->AddIncomingRoadNode(m_currentRoadNodeCluster->m_roadNodes[m_indexOfLastPermanentNode]);
-					ExitSplineMode();
-				}
-				else if(m_forkIntersectionNode)
+				//check if we are forking the road
+				if(m_forkIntersectionNode)
 				{
 					RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterToSpawnFork, m_indexOfForkNode);
 					newIntersection->AddOutgoingRoadNode(m_currentRoadNodeCluster->m_roadNodes[0]);
+
 					m_forkIntersectionNode = nullptr;
 					m_roadNodeClusterToSpawnFork = nullptr;
 					m_indexOfForkNode = -1;
+				}
+
+				//check if we are interacting with a permanent node
+				if(m_roadNodeInRange)
+				{
+					//Are we creating a new intersection
+					if(m_roadNodeClusterInRange)
+					{
+						//check if we are inserting into the start of the road
+						if(m_intersectionNodeIndex == 0)
+						{
+							if(m_roadNodeClusterInRange != m_currentRoadNodeCluster)
+							{
+								//find the index of the roadNodeCluster we are attempting to connect to
+								int intersectionRoadNodeClusterIndex = 0;
+								for(; intersectionRoadNodeClusterIndex < m_roadNodeClusters.size(); ++intersectionRoadNodeClusterIndex)
+								{
+									if(m_roadNodeClusters[intersectionRoadNodeClusterIndex] == m_roadNodeClusterInRange)
+									{
+										break;
+									}
+								}
+
+								//erase the roadNodeCluster from the list of roadNodeClusters
+								m_roadNodeClusters.erase(m_roadNodeClusters.begin() + intersectionRoadNodeClusterIndex);
+
+								//add the nodes of the removed road to the current road
+								for(int roadNodeIndex = 0; roadNodeIndex < m_roadNodeClusterInRange->m_roadNodes.size(); ++roadNodeIndex)
+								{
+									m_currentRoadNodeCluster->AddNode(m_roadNodeClusterInRange->m_roadNodes[roadNodeIndex]);
+								}
+
+								delete m_roadNodeClusterInRange;
+							}
+
+							m_currentRoadNodeCluster->m_roadNodes[0]->AddNextNode(m_currentRoadNodeCluster->m_roadNodes.back());
+							m_currentRoadNodeCluster->m_roadNodes.back()->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes[0]);
+							m_currentRoadNodeCluster->InitiateNodeConnections();
+
+							m_roadNodeClusterInRange = nullptr;
+						}
+						else
+						{
+							RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterInRange,
+								m_intersectionNodeIndex);
+							newIntersection->AddIncomingRoadNode(m_tempNodes[m_indexOfLastPermanentNode]);
+						}
+
+						ExitSplineMode();
+					}
+					//at this point we are interacting with an existing intersection
+					else
+					{
+						int x = 1;
+					}
 				}
 			}
 		}
 		else
 		{
 			//Free-form mode
-			if(GetMouseWorldPosWithSpecifiedZ(mouseWorldPosition, 0.f))
+			if( GetMouseWorldPosWithSpecifiedZ(mouseWorldPosition, 0.f) )
 			{
 				RoadNode* currentRoadNode = nullptr;
 				RoadNodeCluster* currentRoadNodeCluster = nullptr;
-					
+
 				int indexOfClosestNode = -1;
 				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode, indexOfClosestNode);
 				if(currentRoadNode != nullptr)
@@ -2802,6 +2929,25 @@ namespace gh
 		RoadNodeCluster* currentRoadNodeCluster = nullptr;
 		RoadNode* currentRoadNode = nullptr;
 
+		//first we check if we are hitting the current road node cluster
+		if( m_currentRoadNodeCluster )
+		{
+			for(int i = 0; i < m_currentRoadNodeCluster->m_roadNodes.size(); ++i)
+			{
+				currentRoadNode = m_currentRoadNodeCluster->m_roadNodes[i];
+				currentDistanceSquared = (currentRoadNode->m_location - worldPosition).calculateRadialDistanceSquared();
+
+				if(currentDistanceSquared < closestDistanceSquared
+					|| closestDistanceSquared < 0.f )
+				{
+					closestDistanceSquared = currentDistanceSquared;
+					out_roadNode = currentRoadNode;
+					out_roadNodeCluster = m_currentRoadNodeCluster;
+					out_indexOfClosestNode = i;
+				}
+			}
+		}
+
 		for(int i = 0; i < m_roadNodeClusters.size(); ++i)
 		{
 			currentRoadNodeCluster = m_roadNodeClusters[i];
@@ -2822,11 +2968,42 @@ namespace gh
 			}
 		}
 
-		if( closestDistanceSquared > m_lengthOfFragmentSquared )
+		if( sqrtf(closestDistanceSquared) > sqrtf(m_lengthOfFragmentSquared) * 0.5f )
 		{
 			out_roadNode = nullptr;
 			out_roadNodeCluster = nullptr;
 			out_indexOfClosestNode = -1;
+		}
+	}
+
+	void Application::CheckForIntersectionNodesWithinRange(const Vector3& worldPosition, RoadNodeIntersection*& out_intersectionNode,
+		int& out_indexOfIntersectionNode)
+	{
+		//get the closest node
+		float closestDistanceSquared = -1.f;
+		float currentDistanceSquared = 0.f;
+
+		//iterate through all the intersection road nodes
+		RoadNodeIntersection* intersectionNode = nullptr;
+
+		for(int i = 0; i < m_intersectionNodes.size(); ++i)
+		{
+			intersectionNode = m_intersectionNodes[i];
+			currentDistanceSquared = (intersectionNode->m_location - worldPosition).calculateRadialDistanceSquared();
+
+			if(currentDistanceSquared < closestDistanceSquared
+				|| closestDistanceSquared < 0.f )
+			{
+				closestDistanceSquared = currentDistanceSquared;
+				out_intersectionNode = intersectionNode;
+				out_indexOfIntersectionNode = i;
+			}
+		}
+
+		if( closestDistanceSquared > m_lengthOfFragmentSquared )
+		{
+			out_intersectionNode = nullptr;
+			out_indexOfIntersectionNode = -1;
 		}
 	}
 
