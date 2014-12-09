@@ -1998,12 +1998,8 @@ namespace gh
 		{
 			//attempt to close the road
 			//find the tangent of the current node
-			Vector3 startTangent;
-			if(m_indexOfLastPermanentNode > 0)
-			{
-				startTangent = m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_tempNodes[m_indexOfLastPermanentNode - 1]->m_location;
-			}
-			else
+			Vector3 startTangent = m_tempNodes[m_indexOfLastPermanentNode]->GetTangentOfNode();
+			if(startTangent == Vector3())
 			{
 				startTangent = mouseWorldPos - m_tempNodes[0]->m_location;
 			}
