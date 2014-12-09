@@ -50,6 +50,7 @@ namespace gh
 
 		void SetLocation(const Vector3& newLocation);
 		void AddPreviousNode(RoadNode* nodeToAdd);
+		void RemoveNextNode(RoadNode* nodeToRemove);
 		void AddNextNode(RoadNode* nodeToAdd);
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
 		virtual Vector3 GetTangentOfNode();
@@ -93,6 +94,9 @@ namespace gh
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
 		void AddIncomingRoadNode(RoadNode* incomingRoadNode);
 		void AddOutgoingRoadNode(RoadNode* outgoingRoadNode);
+		void GetDirectionOfBranchingSegments(std::vector<Vector3>& out_directionSegments);
+		bool AllowsForOutgoingNodes();
+		Vector3 GetDefaultDirectionOfIntersection();
 
 		std::map< RoadNode*, std::vector< RoadNode* > > m_intersectionConnectionsMap;
 	};
@@ -132,6 +136,7 @@ namespace gh
 			int indexOfNodeToPlace = 0);
 		RotationDirection GetBestWayToRotateToFaceLocation(const Vector3& startLocation, const Vector3& startDirection,
 			const Vector3& endLocation);
+		void AddNewTempNode(int indexOfNewNode);
 		void PrecalculateRoadVariables();
 		void RenderSplines();
 		void ExitSplineMode();
@@ -179,6 +184,7 @@ namespace gh
 		int m_intersectionNodeIndex;
 		RoadNode* m_forkIntersectionNode;
 		RoadNodeCluster* m_roadNodeClusterToSpawnFork;
+		RoadNodeIntersection* m_roadNodeIntersectionToForkFrom;
 		int m_indexOfForkNode;
 		std::vector< RoadNodeCluster* > m_roadNodeClusters;
 		std::vector< RoadNodeIntersection* > m_intersectionNodes;
@@ -202,7 +208,7 @@ namespace gh
 		bool m_showSecondCurveSystem;
 		bool m_showDirectionOnPlacedRoads;
 		bool m_showDirectionOnTempNodes;
-		bool m_addRoadOnExit;
+		bool m_currentRoadIsNew;
 	};
 	//=================================================================================================
 	///////////////////////////////////////////////////////////////////////////////////////////////////
