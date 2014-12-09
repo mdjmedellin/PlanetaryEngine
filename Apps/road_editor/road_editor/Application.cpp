@@ -1974,223 +1974,214 @@ namespace gh
 		return directionToRotate;
 	}
 
-	void Application::CalculateSplineToMousePos()
+	void Application::AddDebugNodesToIndicateMerge(RoadNode* startingNode, RoadNode* nodeToMergeTo)
 	{
-		if(!m_splineMode 
-			|| m_indexOfLastPermanentNode < 0)
+		Vector3 distanceVector = nodeToMergeTo->m_location - startingNode->m_location;
+		float distanceBetweenPoints = distanceVector.calculateRadialDistance();
+
+		Vector3 startTangent = startingNode->GetTangentOfNode();
+		Vector3 endTangent = nodeToMergeTo->GetTangentOfNode();
+
+		startTangent.normalize();
+		endTangent.normalize();
+
+		startTangent *= distanceBetweenPoints;
+		endTangent *= distanceBetweenPoints;
+		startTangent.z = 0.f;
+		endTangent.z = 0.f;
+
+		int totalSegments = 50;
+		float oneOverNumberOfSegments = 1.f / totalSegments;
+		for (int i = 0; i < totalSegments; ++i)
 		{
-			return;
+			float t =  i * oneOverNumberOfSegments;    // scale s to go from 0 to 1
+			float s = 1 - t;
+
+			float h1 =  (s * s) * ( 1.f + ( 2.f * t ) );											// calculate basis function 1
+			float h2 = (t * t) * ( 1.f + ( 2.f * s ) );												// calculate basis function 2
+			float h3 = (s * s) * t;																	// calculate basis function 3
+			float h4 = -(t * t) * s;																// calculate basis function 4
+			Vector3 p = (h1 * startingNode->m_location) +											// multiply and sum all funtions
+				(h2 * nodeToMergeTo->m_location) +													// together to build the interpolated
+				h3*startTangent +																	// point along the curve.
+				h4*endTangent;
+
+			m_debugNodesToRender.push_back(new RoadNode());
+			m_debugNodesToRender.back()->m_location = p;
+		}
+	}
+
+	int Application::CalculateIntersectionConnection(const Vector3& mouseWorldPos)
+	{
+		int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
+
+		//find the tangent of the current node
+		Vector3 startTangent = m_tempNodes[m_indexOfLastPermanentNode]->GetTangentOfNode();
+		if(startTangent == Vector3())
+		{
+			startTangent = mouseWorldPos - m_tempNodes[m_indexOfLastPermanentNode]->m_location;
 		}
 
-		Vector3 mouseWorldPos;
-		bool mousePositionHitsDesiredElevation = GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f);
+		//tangent of the node we are attempting to merge into
+		Vector3 endTangent;
+		endTangent = m_roadNodeInRange->GetTangentOfNode();
 
-		//Check if we need to automatically finish the road
-		CheckForRoadNodesWithinRange(mouseWorldPos, m_roadNodeClusterInRange, m_roadNodeInRange, m_intersectionNodeIndex);
-		if(m_roadNodeInRange == nullptr)
+		startTangent.normalize();
+		endTangent.normalize();
+
+		Vector3 endDirection = endTangent;
+		Vector3 startDirection = startTangent;
+		endDirection.z = 0.f;
+		startDirection.z = 0.f;
+
+		//NOTE: The following is just to display the temporary curve created by the hermite spline equation
+		//use the distance as the multiplier
+		AddDebugNodesToIndicateMerge(m_tempNodes[m_indexOfLastPermanentNode], m_roadNodeInRange);
+
+		//try to get the road to face the direction of the new node
+		//figure out what direction to bend
+		//CW or CCW
+		std::vector< RoadNode* > localNodeContainer;
+		AddNodesToFaceSpecifiedLocation(m_roadNodeInRange->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
+			startDirection, localNodeContainer);
+
+		Vector3 endLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+		int nodeContainerSize = localNodeContainer.size();
+
+		Vector3 newDesiredDirection = startDirection;
+		if(nodeContainerSize > 1)
 		{
-			CheckForIntersectionNodesWithinRange(mouseWorldPos, m_intersectionNodeInRange, m_intersectionNodeIndex);
-			m_roadNodeInRange = m_intersectionNodeInRange;
+			endLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
+
+			newDesiredDirection = localNodeContainer[nodeContainerSize - 1]->m_location 
+				- localNodeContainer[nodeContainerSize - 2]->m_location;
 		}
-		
-		if( s_inputLogger->IsCharacterDown('Q')
-			&& m_roadNodeInRange != nullptr )
+		else if(nodeContainerSize > 0)
 		{
-			//attempt to close the road
-			//find the tangent of the current node
-			Vector3 startTangent = m_tempNodes[m_indexOfLastPermanentNode]->GetTangentOfNode();
-			if(startTangent == Vector3())
+			endLocation = localNodeContainer[0]->m_location;
+
+			newDesiredDirection = localNodeContainer[0]->m_location - m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+		}
+		newDesiredDirection *= -1.f;
+
+		Vector3 newStartDirection = -endDirection;
+		RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(m_roadNodeInRange->m_location, 
+			newStartDirection, endLocation);
+
+		//delete the nodes and empty the array of nodes created temporarily
+		for(int nodeIndex = 0; nodeIndex < nodeContainerSize; ++nodeIndex)
+		{
+			delete localNodeContainer[nodeIndex];
+		}
+		localNodeContainer.clear();
+
+		AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, m_roadNodeInRange->m_location,
+			localNodeContainer, directionToRotate);
+
+		Vector3 currentEndDirection = -endTangent;
+		endLocation = m_roadNodeInRange->m_location;
+		nodeContainerSize = localNodeContainer.size();
+		if(nodeContainerSize > 1)
+		{
+			endLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
+
+			currentEndDirection = endLocation - localNodeContainer[nodeContainerSize - 2]->m_location;
+		}
+		else if(nodeContainerSize > 0)
+		{
+			endLocation = localNodeContainer[0]->m_location;
+
+			currentEndDirection = endLocation - m_roadNodeInRange->m_location;
+		}
+		currentEndDirection.normalize();
+
+		Vector3 currentStartDirection = startDirection;
+		std::vector <RoadNode* > tempStartNodes;
+
+
+		Vector3 currentDesiredEndDirection;
+		Vector3 currentDesiredEndDirectionRotated90CW;
+		Matrix4X4 currentEndDirectionRotationMatrix;
+		Vector3 currentDesiredStartDirection;
+		Vector3 currentDesiredStartDirectionRotated90CW;
+		Matrix4X4 currentStartDirectionRotationMatrix;
+		Vector3 currentStartLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+		Vector3 currentEndLocation = endLocation;
+		bool keepIterating = true;
+		int maxIterations = 100;		//There needs to be a better way to identify cases where one a connection cannot be made
+
+		Matrix4X4 clockwise90DegreeRotation = Matrix4X4::RotateZDegreesMatrix(-90.f);
+		Matrix4X4 clockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
+		Matrix4X4 counterClockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
+
+		while(keepIterating 
+			&& maxIterations > 0)
+		{
+			currentDesiredEndDirection =  currentStartLocation - currentEndLocation;
+			currentDesiredEndDirection.normalize();
+			currentDesiredEndDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredEndDirection);
+
+			currentEndDirectionRotationMatrix = clockwiseMaxRotation;
+			if(currentEndDirection.DotProduct(currentDesiredEndDirectionRotated90CW) > 0.f)
 			{
-				startTangent = mouseWorldPos - m_tempNodes[0]->m_location;
+				currentEndDirectionRotationMatrix = counterClockwiseMaxRotation;
 			}
 
-			Vector3 endTangent;
-			endTangent = m_roadNodeInRange->GetTangentOfNode();
+			currentDesiredStartDirection = -currentDesiredEndDirection;
+			currentDesiredStartDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredStartDirection);
 
-			startTangent.normalize();
-			endTangent.normalize();
-
-			Vector3 endDirection = endTangent;
-			Vector3 startDirection = startTangent;
-			endDirection.z = 0.f;
-			startDirection.z = 0.f;
-
-			//NOTE: The following is just to display the temporary curve created by the hermite spline equation
-			//use the distance as the multiplier
-			Vector3 distanceVector = m_tempNodes[m_indexOfLastPermanentNode]->m_location - m_roadNodeInRange->m_location;
-			float distanceBetweenPoints = distanceVector.calculateRadialDistance();
-
-			startTangent *= distanceBetweenPoints;
-			endTangent *= distanceBetweenPoints;
-
-			startTangent.z = 0.f;
-			endTangent.z = 0.f;
-
-			for (int step=0; step < 50; step++)
+			currentStartDirectionRotationMatrix = clockwiseMaxRotation;
+			if(currentStartDirection.DotProduct(currentDesiredStartDirectionRotated90CW) > 0.f)
 			{
-				float t = (float)step / (float)50;    // scale s to go from 0 to 1
-				float s = 1 - t;
-
-				float h1 =  (s * s) * ( 1.f + ( 2.f * t ) );											// calculate basis function 1
-				float h2 = (t * t) * ( 1.f + ( 2.f * s ) );												// calculate basis function 2
-				float h3 = (s * s) * t;																	// calculate basis function 3
-				float h4 = -(t * t) * s;																// calculate basis function 4
-				Vector3 p = (h1 * m_tempNodes[m_indexOfLastPermanentNode]->m_location) +                // multiply and sum all funtions
-					(h2 * m_roadNodeInRange->m_location) +												// together to build the interpolated
-					h3*startTangent +																	// point along the curve.
-					h4*endTangent;
-
-				m_debugNodesToRender.push_back(new RoadNode());
-				m_debugNodesToRender.back()->m_location = p;
+				currentStartDirectionRotationMatrix = counterClockwiseMaxRotation;
 			}
 
-
-			//try to get the road to face the direction of the new node
-			//figure out what direction to bend
-			//CW or CCW
-			std::vector< RoadNode* > localNodeContainer;
-			AddNodesToFaceSpecifiedLocation(m_roadNodeInRange->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
-								startDirection, localNodeContainer);
-
-			Vector3 endLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
-			int nodeContainerSize = localNodeContainer.size();
-
-			Vector3 newDesiredDirection = startDirection;
-			if(nodeContainerSize > 1)
+			int nodesAdded = 0;
+			//start with the end location node
+			if(currentEndDirection.DotProduct(currentDesiredEndDirection) < m_maxTurnAngleDotProductForRoadSegments)
 			{
-				endLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
+				currentEndDirection = currentEndDirectionRotationMatrix.TransformDirection(currentEndDirection);
+				//add a new segment rotated towards the final direction
+				localNodeContainer.push_back(new RoadNode());
+				localNodeContainer.back()->m_location = currentEndLocation + (currentEndDirection * m_lengthOfFragment);
+				currentEndLocation = localNodeContainer.back()->m_location;
 
-				newDesiredDirection = localNodeContainer[nodeContainerSize - 1]->m_location 
-					- localNodeContainer[nodeContainerSize - 2]->m_location;
-			}
-			else if(nodeContainerSize > 0)
-			{
-				endLocation = localNodeContainer[0]->m_location;
-
-				newDesiredDirection = localNodeContainer[0]->m_location - m_tempNodes[m_indexOfLastPermanentNode]->m_location;
-			}
-			newDesiredDirection *= -1.f;
-
-			Vector3 newStartDirection = -endDirection;
-			RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(m_roadNodeInRange->m_location, 
-				newStartDirection, endLocation);
-
-			//delete the nodes and empty the array of nodes created temporarily
-			for(int nodeIndex = 0; nodeIndex < nodeContainerSize; ++nodeIndex)
-			{
-				delete localNodeContainer[nodeIndex];
-			}
-			localNodeContainer.clear();
-
-			AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, m_roadNodeInRange->m_location,
-				localNodeContainer, directionToRotate);
-
-			Vector3 currentEndDirection = -endTangent;
-			endLocation = m_roadNodeInRange->m_location;
-			nodeContainerSize = localNodeContainer.size();
-			if(nodeContainerSize > 1)
-			{
-				endLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
-
-				currentEndDirection = endLocation - localNodeContainer[nodeContainerSize - 2]->m_location;
-			}
-			else if(nodeContainerSize > 0)
-			{
-				endLocation = localNodeContainer[0]->m_location;
-
-				currentEndDirection = endLocation - m_roadNodeInRange->m_location;
-			}
-			currentEndDirection.normalize();
-
-			Vector3 currentStartDirection = startDirection;
-			std::vector <RoadNode* > tempStartNodes;
-
-			Vector3 currentDesiredEndDirection;
-			Vector3 currentDesiredEndDirectionRotated90CW;
-			Matrix4X4 currentEndDirectionRotationMatrix;
-			Vector3 currentDesiredStartDirection;
-			Vector3 currentDesiredStartDirectionRotated90CW;
-			Matrix4X4 currentStartDirectionRotationMatrix;
-			Vector3 currentStartLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
-			Vector3 currentEndLocation = endLocation;
-			bool keepIterating = true;
-			int maxIterations = 100;		//There needs to be a better way to identify cases where one a connection cannot be made
-
-			Matrix4X4 clockwise90DegreeRotation = Matrix4X4::RotateZDegreesMatrix(-90.f);
-			Matrix4X4 clockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
-			Matrix4X4 counterClockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
-
-			while(keepIterating 
-				&& maxIterations > 0)
-			{
-				currentDesiredEndDirection =  currentStartLocation - currentEndLocation;
-				currentDesiredEndDirection.normalize();
-				currentDesiredEndDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredEndDirection);
-				currentEndDirectionRotationMatrix = clockwiseMaxRotation;
-				
-				if(currentEndDirection.DotProduct(currentDesiredEndDirectionRotated90CW) > 0.f)
-				{
-					currentEndDirectionRotationMatrix = counterClockwiseMaxRotation;
-				}
-				
-				currentDesiredStartDirection = -currentDesiredEndDirection;
-				currentDesiredStartDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredStartDirection);
-				currentStartDirectionRotationMatrix = clockwiseMaxRotation;
-
-				if(currentStartDirection.DotProduct(currentDesiredStartDirectionRotated90CW) > 0.f)
-				{
-					currentStartDirectionRotationMatrix = counterClockwiseMaxRotation;
-				}
-
-				int nodesAdded = 0;
-				//start with the end location node
-				if(currentEndDirection.DotProduct(currentDesiredEndDirection) < m_maxTurnAngleDotProductForRoadSegments)
-				{
-					currentEndDirection = currentEndDirectionRotationMatrix.TransformDirection(currentEndDirection);
-					//add a new segment rotated towards the final direction
-					localNodeContainer.push_back(new RoadNode());
-					localNodeContainer.back()->m_location = currentEndLocation + (currentEndDirection * m_lengthOfFragment);
-					currentEndLocation = localNodeContainer.back()->m_location;
-
-					++nodesAdded;
-				}
-
-				if(currentStartDirection.DotProduct(currentDesiredStartDirection) < m_maxTurnAngleDotProductForRoadSegments)
-				{
-					currentStartDirection = currentStartDirectionRotationMatrix.TransformDirection(currentStartDirection);
-					//add a new segment rotated towards the final direction
-					tempStartNodes.push_back(new RoadNode());
-					tempStartNodes.back()->m_location = currentStartLocation + (currentStartDirection * m_lengthOfFragment);
-					currentStartLocation = tempStartNodes.back()->m_location;
-
-					++nodesAdded;
-				}
-
-				if(nodesAdded == 0)
-				{
-					break;
-				}
-
-				--maxIterations;
+				++nodesAdded;
 			}
 
-			if(maxIterations <= 0)
+			if(currentStartDirection.DotProduct(currentDesiredStartDirection) < m_maxTurnAngleDotProductForRoadSegments)
 			{
-				for(int i = 0; i < localNodeContainer.size(); ++i)
-				{
-					delete localNodeContainer[i];
-				}
+				currentStartDirection = currentStartDirectionRotationMatrix.TransformDirection(currentStartDirection);
+				//add a new segment rotated towards the final direction
+				tempStartNodes.push_back(new RoadNode());
+				tempStartNodes.back()->m_location = currentStartLocation + (currentStartDirection * m_lengthOfFragment);
+				currentStartLocation = tempStartNodes.back()->m_location;
 
-				for(int i = 0; i < tempStartNodes.size(); ++i)
-				{
-					delete tempStartNodes[i];
-				}
-
-				m_indexOfLastTempNode = m_indexOfLastPermanentNode;
-				return;
+				++nodesAdded;
 			}
 
-			int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
+			if(nodesAdded == 0)
+			{
+				break;
+			}
+
+			--maxIterations;
+		}
+
+		if(maxIterations <= 0)
+		{
+			for(int i = 0; i < localNodeContainer.size(); ++i)
+			{
+				delete localNodeContainer[i];
+			}
+
+			for(int i = 0; i < tempStartNodes.size(); ++i)
+			{
+				delete tempStartNodes[i];
+			}
+		}
+		else
+		{
 			int sizeOfNodeHolder = m_tempNodes.size();
 			for(int i = 0; i < tempStartNodes.size(); ++i)
 			{
@@ -2219,14 +2210,42 @@ namespace gh
 				delete tempStartNodes[i];
 			}
 
-			m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
-
 			//RemoveConnection from last node if needed
-			if(m_tempNodes.size() > m_indexOfLastTempNode + 1)
+			if(m_tempNodes.size() > indexOfTempNodeToPlace)
 			{
-				m_tempNodes[m_indexOfLastTempNode]->RemoveNextNode(m_tempNodes[m_indexOfLastTempNode + 1]);
+				m_tempNodes[indexOfTempNodeToPlace - 1]->RemoveNextNode(m_tempNodes[indexOfTempNodeToPlace]);
 			}
+		}
 
+		//return the number of nodes that were added
+		int nodesAdded = indexOfTempNodeToPlace - (m_indexOfLastPermanentNode + 1);
+		return nodesAdded;
+	}
+
+	void Application::CalculateSplineToMousePos()
+	{
+		if(!m_splineMode 
+			|| m_indexOfLastPermanentNode < 0)
+		{
+			return;
+		}
+
+		Vector3 mouseWorldPos;
+		bool mousePositionHitsDesiredElevation = GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f);
+
+		//Check if we need to automatically finish the road
+		CheckForRoadNodesWithinRange(mouseWorldPos, m_roadNodeClusterInRange, m_roadNodeInRange, m_intersectionNodeIndex);
+		if(m_roadNodeInRange == nullptr)
+		{
+			CheckForIntersectionNodesWithinRange(mouseWorldPos, m_intersectionNodeInRange, m_intersectionNodeIndex);
+			m_roadNodeInRange = m_intersectionNodeInRange;
+		}
+		
+		if( s_inputLogger->IsCharacterDown('Q')
+			&& m_roadNodeInRange != nullptr )
+		{
+			int nodesAdded = CalculateIntersectionConnection(mouseWorldPos);
+			m_indexOfLastTempNode = m_indexOfLastPermanentNode + nodesAdded;
 			return;
 		}
 

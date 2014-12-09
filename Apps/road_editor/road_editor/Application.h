@@ -124,6 +124,7 @@ namespace gh
 		void render3DScene();
 		void render2DScene();
 		void CalculateSplineToMousePos();
+		int	CalculateIntersectionConnection(const Vector3& mouseWorldPos);
 		bool GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(const Vector3& desiredDirection,
 			const Matrix4X4& maxRotationMatrix, float maxTurnAngleDotProduct, int indexOfLastValidNode,
 			NodeInformation& out_info);
@@ -137,6 +138,7 @@ namespace gh
 		RotationDirection GetBestWayToRotateToFaceLocation(const Vector3& startLocation, const Vector3& startDirection,
 			const Vector3& endLocation);
 		void AddNewTempNode(int indexOfNewNode);
+		void AddDebugNodesToIndicateMerge(RoadNode* startNode, RoadNode* nodeToMergeTo);
 		void PrecalculateRoadVariables();
 		void RenderSplines();
 		void ExitSplineMode();
