@@ -58,6 +58,7 @@ namespace gh
 		Vector3 m_location;
 		std::vector< RoadNode* > m_previousNodes;
 		std::vector< RoadNode* > m_nextNodes;
+		bool m_isValid;
 	};
 
 	struct RoadNodeCluster
@@ -124,12 +125,19 @@ namespace gh
 		void render3DScene();
 		void render2DScene();
 		void CalculateSplineToMousePos();
+		void testFunctionName();
 		int	CalculateIntersectionConnection(const Vector3& mouseWorldPos);
+		int ConstructBestPossibleRoad(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
+		int ConstructRoadFromNodeWithIndex0(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
+		int ConstructRoadTowardsSpecifiedLocation(const Vector3& goalLocation, RoadNode* startNode, int indexOfNextTempNode);
+		int ConstructTurnTowardsSpecifiedLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
+		int CreateDirectConnection(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
+		int BranchRoadFromSpecifiedNodeTowardsGoalLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
 		bool GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(const Vector3& desiredDirection,
 			const Matrix4X4& maxRotationMatrix, float maxTurnAngleDotProduct, int indexOfLastValidNode,
 			NodeInformation& out_info);
-		int AddSemiCircle(int indexOfSemiCircleStart, const Vector3& directionToBuildSemiCircle);
-		int AddQuarterCircle(int indexOfLastValidNode, const Vector3& directionToBuild);
+		int AddSemiCircle(int indexOfSemiCircleStart, const Vector3& directionOfStartNode, const Vector3& goalLocation);
+		int AddQuarterCircle(int indexOfQuarterCircleStart, const Vector3& directionOfStartNode, const Vector3& goalLocation);
 		int AddNodesToFaceSpecifiedLocation(const Vector3& locationToFace, const Vector3& startingLocation,
 			const Vector3& startingDirection, std::vector< RoadNode* >& nodeContainer, int indexOfNodeToPlace = 0);
 		int AddNodesToFaceSpecifiedDirection(const Vector3& directionToFace, const Vector3& startingDirection,
@@ -137,6 +145,8 @@ namespace gh
 			int indexOfNodeToPlace = 0);
 		RotationDirection GetBestWayToRotateToFaceLocation(const Vector3& startLocation, const Vector3& startDirection,
 			const Vector3& endLocation);
+		RotationDirection GetBestSuitedRotationMatrix(const Vector3& startLocation, const Vector3& startDirection, const Vector3& endLocation,
+			Matrix4X4& out_bestSuitedRotationMatrix);
 		void AddNewTempNode(int indexOfNewNode);
 		void AddDebugNodesToIndicateMerge(RoadNode* startNode, RoadNode* nodeToMergeTo);
 		void PrecalculateRoadVariables();
@@ -204,6 +214,7 @@ namespace gh
 		float m_maxYawRotationDegreesForRoadSegments;
 		Matrix4X4 m_roadMaxCWRotationTransformationMatrix;
 		Matrix4X4 m_roadMaxCCWRotationTransformationMatrix;
+		Matrix4X4 m_rotationMatrix90DegreesCW;
 		float m_HUDFontHeight;
 		float m_HUDLineBreakHeight;
 		float m_radiusOfRoadCircle;
