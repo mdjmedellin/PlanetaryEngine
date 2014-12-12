@@ -16,7 +16,7 @@
 #include "MutexLock.h"
 #include "Mutex.h"
 
-#include "MemoryUtilities.h"
+//#include "MemoryUtilities.h"
 
 CommandConsoleSystem theConsole;
 

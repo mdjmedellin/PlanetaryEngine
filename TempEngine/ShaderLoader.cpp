@@ -5,7 +5,7 @@
 #include <cassert>
 
 #include "ShaderLoader.h"
-#include "MemoryUtilities.h"
+//#include "MemoryUtilities.h"
 #include "FileManager.h"
 
 namespace gh

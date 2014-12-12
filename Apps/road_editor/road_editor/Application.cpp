@@ -23,6 +23,7 @@
 namespace
 {
 	const int MAX_CAR_NUMBER = 24;
+	const float SIZE_OF_POINTS = 10.f;
 
 	//helper functions
 	void ConsoleCommand_ClearConsole( const ConsoleCommandArgs& args )
@@ -256,15 +257,32 @@ namespace gh
 		m_roadNodes.push_back(nodeToAdd);
 	}
 
-	void RoadNodeCluster::Render(MatrixStack& matrixStack, const Vector3& nodeColor, bool renderDirection)
+	void RoadNodeCluster::Render(MatrixStack& matrixStack, float scale, const Vector3& nodeColor, bool renderDirection)
 	{
 		matrixStack.PushMatrix();
+		
+		glLoadMatrixf(matrixStack.GetTopMatrixFV());
+		glDisable(GL_TEXTURE_2D);
+		glUseProgram(0);
 
-		//render the nodes
-		for(int i = 0; i < m_roadNodes.size(); ++i)
+		Rgba myColor = Rgba::WHITE;
+		myColor.m_R = nodeColor.x;
+		myColor.m_G = nodeColor.y;
+		myColor.m_B = nodeColor.z;
+
+		glPointSize(SIZE_OF_POINTS * scale);
+		glBegin(GL_POINTS);
 		{
-			m_roadNodes[i]->Render(matrixStack, nodeColor);
+			glColor3f(myColor.m_R, myColor.m_G, myColor.m_B);
+			//render the nodes
+			Vector3 currentLocation;
+			for(int i = 0; i < m_roadNodes.size(); ++i)
+			{
+				currentLocation = m_roadNodes[i]->m_location;
+				glVertex3f(currentLocation.x, currentLocation.y, currentLocation.z);
+			}
 		}
+		glEnd();
 
 		std::vector<NodeInformation> arrowheads;
 		NodeInformation currentArrowHeadInformation;
@@ -272,10 +290,6 @@ namespace gh
 		int nodeCount = 0;
 
 		//render the connecting lines
-		glLoadMatrixf(matrixStack.GetTopMatrixFV());
-		glDisable(GL_TEXTURE_2D);
-		glUseProgram(0);
-
 		glBegin(GL_LINES);
 		{
 			glColor3f(1.f,0.f,0.f);
@@ -429,6 +443,8 @@ namespace gh
 		,	m_roadNodeClusterToSpawnFork(nullptr)
 		,	m_roadNodeIntersectionToForkFrom(nullptr)
 		,	m_indexOfForkNode(-1)
+		,	m_originalZVal(100.f)
+		,	m_scale(1.f)
 	{
 		//initialize glew
 		glewInit();
@@ -467,7 +483,7 @@ namespace gh
 		//initiateDrivingSystem();
 
 		m_camera = new Camera( false );
-		m_camera->setPosition( Vector3( 0.f, 0.f, 100.f ) );
+		m_camera->setPosition( Vector3( 0.f, 0.f, m_originalZVal ) );
 
 		m_updateInput = true;
 
@@ -1547,6 +1563,16 @@ namespace gh
 		{
 			m_camera->updateInput();
 			m_camera->updateDynamics( deltaTime );
+			//update zoom
+			float newZval = m_camera->position().z;
+			if(newZval != 0.f)
+			{
+				m_scale = m_originalZVal / newZval;
+			}
+			else
+			{
+				m_scale = 0.f;
+			}
 
 			//update the roads and vehicles
 			if(m_roadSystem)
@@ -2246,7 +2272,80 @@ namespace gh
 		return indexOfTempNodeToPlace - indexOfNextTempNode;
 	}
 
-	int Application::ConstructRoadTowardsSpecifiedLocation(const Vector3& goalLocation, RoadNode* startNode, int indexOfNextTempNode)
+	int Application::AddNodesToGetAsCloseAsPossibleToGoal(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode)
+	{
+		RoadNode* currentNode = startNode;
+		Vector3 distanceVector = goalLocation - currentNode->m_location;
+		Vector3 normalizedDirectionOfLastSegment = currentNode->GetTangentOfNode();
+		Vector3 normalizedDirectionCurrentNodeToGoal = distanceVector;
+		normalizedDirectionCurrentNodeToGoal.normalize();
+		Vector3 normalizedDirectionOfLastSegmentRotated90DegreesCW;
+		int indexOfTempNodeToPlace = indexOfNextTempNode;
+		float distanceSquared = distanceVector.calculateRadialDistanceSquared();
+		float dotProductLastSegment90CWAndDirectionCurrentNodeToGoal = -1.f;
+		NodeInformation nextNodeInformation;
+
+		while(distanceSquared > m_lengthOfFragmentSquared)
+		{
+			distanceVector = goalLocation - currentNode->m_location;
+			normalizedDirectionCurrentNodeToGoal = distanceVector;
+			normalizedDirectionCurrentNodeToGoal.normalize();
+			distanceSquared = distanceVector.calculateRadialDistanceSquared();
+
+			//calculate the direction of the last segment
+			normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace - 1]->GetTangentOfNode();
+			normalizedDirectionOfLastSegment.normalize();
+
+			if(normalizedDirectionOfLastSegment == Vector3())
+			{
+				int x = 1;
+			}
+
+			normalizedDirectionOfLastSegmentRotated90DegreesCW = 
+				m_rotationMatrix90DegreesCW.TransformDirection(normalizedDirectionOfLastSegment);
+
+			//check if we are rotating clockwise or counterclockwise
+			dotProductLastSegment90CWAndDirectionCurrentNodeToGoal
+				= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeToGoal);
+
+			Matrix4X4 rotationMatrix = m_roadMaxCCWRotationTransformationMatrix;
+			if(dotProductLastSegment90CWAndDirectionCurrentNodeToGoal > 0.f )
+			{
+				rotationMatrix = m_roadMaxCWRotationTransformationMatrix;
+			}
+
+			//get the location of the next fragment rotated towards the desired direction
+			if(GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(normalizedDirectionCurrentNodeToGoal,
+				rotationMatrix, m_maxTurnAngleDotProductForRoadSegments, indexOfTempNodeToPlace - 1, nextNodeInformation))
+			{
+				//check our stopping conditions
+				float newDistanceSquared = (nextNodeInformation.location - goalLocation).calculateRadialDistanceSquared();
+
+				//we are getting farther away from the mouse
+				if( newDistanceSquared > distanceSquared
+					|| newDistanceSquared <= m_lengthOfFragmentSquared )
+				{
+					break;
+				}
+
+				//add another node
+				AddNewTempNode(indexOfTempNodeToPlace);
+
+				m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
+				currentNode = m_tempNodes[indexOfTempNodeToPlace];
+			}
+			else
+			{
+				break;
+			}
+
+			++indexOfTempNodeToPlace;
+		}
+
+		return indexOfTempNodeToPlace - indexOfNextTempNode;
+	}
+
+	int Application::ConstructRoadTowardsSpecifiedLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode)
 	{
 		RoadNode* currentNode = startNode;
 		Vector3 distanceVector = goalLocation - currentNode->m_location;
@@ -2355,62 +2454,8 @@ namespace gh
 			currentNode = m_tempNodes[indexOfTempNodeToPlace - 1];
 		}
 		
-		while(distanceSquared > m_lengthOfFragmentSquared)
-		{
-			distanceVector = goalLocation - currentNode->m_location;
-			normalizedDirectionCurrentNodeToGoal = distanceVector;
-			normalizedDirectionCurrentNodeToGoal.normalize();
-			distanceSquared = distanceVector.calculateRadialDistanceSquared();
-
-			//calculate the direction of the last segment
-			normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace - 1]->GetTangentOfNode();
-			normalizedDirectionOfLastSegment.normalize();
-
-			if(normalizedDirectionOfLastSegment == Vector3())
-			{
-				int x = 1;
-			}
-
-			normalizedDirectionOfLastSegmentRotated90DegreesCW = 
-				m_rotationMatrix90DegreesCW.TransformDirection(normalizedDirectionOfLastSegment);
-
-			//check if we are rotating clockwise or counterclockwise
-			dotProductLastSegment90CWAndDirectionCurrentNodeToGoal
-				= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeToGoal);
-
-			Matrix4X4 rotationMatrix = m_roadMaxCCWRotationTransformationMatrix;
-			if(dotProductLastSegment90CWAndDirectionCurrentNodeToGoal > 0.f )
-			{
-				rotationMatrix = m_roadMaxCWRotationTransformationMatrix;
-			}
-
-			//get the location of the next fragment rotated towards the desired direction
-			if(GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(normalizedDirectionCurrentNodeToGoal,
-				rotationMatrix, m_maxTurnAngleDotProductForRoadSegments, indexOfTempNodeToPlace - 1, nextNodeInformation))
-			{
-				//check our stopping conditions
-				float newDistanceSquared = (nextNodeInformation.location - goalLocation).calculateRadialDistanceSquared();
-
-				//we are getting farther away from the mouse
-				if( newDistanceSquared > distanceSquared
-					|| newDistanceSquared <= m_lengthOfFragmentSquared )
-				{
-					break;
-				}
-
-				//add another node
-				AddNewTempNode(indexOfTempNodeToPlace);
-
-				m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
-				currentNode = m_tempNodes[indexOfTempNodeToPlace];
-			}
-			else
-			{
-				break;
-			}
-
-			++indexOfTempNodeToPlace;
-		}
+		nodesAdded = AddNodesToGetAsCloseAsPossibleToGoal(currentNode, goalLocation, indexOfTempNodeToPlace);
+		indexOfTempNodeToPlace += nodesAdded;
 
 		return indexOfTempNodeToPlace - indexOfNextTempNode;
 	}
@@ -2425,6 +2470,11 @@ namespace gh
 
 		Vector3 normalizedDirectionOfLastSegment = startNode->GetTangentOfNode();
 		normalizedDirectionOfLastSegment.normalize();
+
+		if(normalizedDirectionOfLastSegment == Vector3())
+		{
+			int x = 1;
+		}
 
 		Vector3 normalizedDirectionOfLastSegmentRotated90DegreesCW 
 			= m_rotationMatrix90DegreesCW.TransformDirection(normalizedDirectionOfLastSegment);
@@ -2455,13 +2505,15 @@ namespace gh
 			{
 				//we are aligned with the direction and on the top zone
 				//this means that we spawn at least a quarter circle
-				nodesAdded = AddQuarterCircle(indexOfTempNodeToPlace - 1, normalizedDirectionOfLastSegment, goalLocation);
+				nodesAdded += AddQuarterCircle(indexOfTempNodeToPlace - 1 + nodesAdded, 
+					m_tempNodes[indexOfTempNodeToPlace - 1 + nodesAdded]->GetTangentOfNode(), goalLocation);
 			}
 			else
 			{
 				//we are facing the opposite direction and on the top zone
 				//this means we at least spawn a semicircle
-				nodesAdded = AddSemiCircle(indexOfTempNodeToPlace - 1, normalizedDirectionOfLastSegment, goalLocation);
+				nodesAdded += AddSemiCircle(indexOfTempNodeToPlace - 1 + nodesAdded, 
+					m_tempNodes[indexOfTempNodeToPlace - 1 + nodesAdded]->GetTangentOfNode(), goalLocation);
 			}
 		}
 		else
@@ -2469,19 +2521,26 @@ namespace gh
 			//we are on the bottom regions
 			if( normalizedDirectionOfLastSegment.DotProduct(normalizedDirectionCurrentNodeToGoal) < 0.f )
 			{
-				nodesAdded = AddSemiCircle(indexOfTempNodeToPlace - 1, normalizedDirectionOfLastSegment, goalLocation);
+				nodesAdded += AddSemiCircle(indexOfTempNodeToPlace - 1 + nodesAdded, 
+					m_tempNodes[indexOfTempNodeToPlace - 1 + nodesAdded]->GetTangentOfNode(), goalLocation);
 
 				if(nodesAdded > 0)
 				{
-					indexOfTempNodeToPlace += nodesAdded;
-					normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace - 1]->GetTangentOfNode();
-					normalizedDirectionOfLastSegment.normalize();
-
-					nodesAdded = AddQuarterCircle(indexOfTempNodeToPlace - 1, normalizedDirectionOfLastSegment, goalLocation);
-					indexOfTempNodeToPlace += nodesAdded;
+					nodesAdded += AddQuarterCircle(indexOfTempNodeToPlace - 1 + nodesAdded, 
+						m_tempNodes[indexOfTempNodeToPlace - 1 + nodesAdded]->GetTangentOfNode(), goalLocation);
 				}
 			}
 		}
+
+		if(nodesAdded > 0)
+		{
+			//lets modify the previous values
+			indexOfTempNodeToPlace += nodesAdded;
+			currentNode = m_tempNodes[indexOfTempNodeToPlace - 1];
+		}
+
+		nodesAdded = AddNodesToGetAsCloseAsPossibleToGoal(currentNode, goalLocation, indexOfTempNodeToPlace);
+		indexOfTempNodeToPlace += nodesAdded;
 
 		return indexOfTempNodeToPlace - indexOfNextTempNode;
 	}
@@ -2517,11 +2576,11 @@ namespace gh
 		{
 			//the mouse cursor can be directly reached
 			//keep adding nodes if the distance is greater than the size of one segment
-			nodesAdded = ConstructRoadTowardsSpecifiedLocation(goalLocation, currentNode, indexOfTempNodeToPlace);
+			nodesAdded = ConstructRoadTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace);
 		}
 		else
 		{
-			//nodesAdded = ConstructTurnTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace);
+			nodesAdded = ConstructTurnTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace);
 		}
 
 		return nodesAdded;
@@ -2767,14 +2826,32 @@ namespace gh
 			&& !m_tempNodes.empty()
 			&& g_renderTempNodes)
 		{
-			for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
+			m_matrixStack.PushMatrix();
+			glLoadMatrixf(m_matrixStack.GetTopMatrixFV());
+			glDisable(GL_TEXTURE_2D);
+			glUseProgram(0);
+
+			Rgba myColor = Rgba::BLACK;
+			myColor.m_G = 1.f;
+
+			glPointSize(SIZE_OF_POINTS * m_scale);
+			glBegin(GL_POINTS);
 			{
-				m_tempNodes[i]->Render(m_matrixStack, Vector3(0.f, 1.f, 0.f));
+				glColor3f(myColor.m_R, myColor.m_G, myColor.m_B);
+				//render the nodes
+				Vector3 currentLocation;
+				for(int i = m_indexOfLastPermanentNode + 1; i <= m_indexOfLastTempNode; ++i)
+				{
+					currentLocation = m_tempNodes[i]->m_location;
+					glVertex3f(currentLocation.x, currentLocation.y, currentLocation.z);
+				}
 			}
+			glEnd();
+			m_matrixStack.PopMatrix();
 
 			if(m_currentRoadNodeCluster)
 			{
-				m_currentRoadNodeCluster->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
+				m_currentRoadNodeCluster->Render(m_matrixStack, m_scale, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
 			}
 		}
 
@@ -2782,7 +2859,7 @@ namespace gh
 		{
 			for(int i = 0; i < m_roadNodeClusters.size(); ++i)
 			{
-				m_roadNodeClusters[i]->Render(m_matrixStack, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
+				m_roadNodeClusters[i]->Render(m_matrixStack, m_scale, Vector3(1.f, 0.f, 0.f), m_showDirectionOnPlacedRoads);
 			}
 		}
 

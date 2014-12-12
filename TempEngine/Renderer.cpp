@@ -11,7 +11,7 @@
 #include "Vector4.h"
 #include "XMLNode.h"
 
-#include "MemoryUtilities.h"
+//#include "MemoryUtilities.h"
 
 gh::Renderer theRenderer;
 

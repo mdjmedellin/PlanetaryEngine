@@ -67,7 +67,7 @@ namespace gh
 		{};
 
 		void AddNode(RoadNode* nodeToAdd);
-		void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), bool renderDirection = false);
+		void Render(MatrixStack& matrixStack, float scale = 1.f, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), bool renderDirection = false);
 		Vector3 GetTangentOfNodeAtSpecifiedIndex(int indexOfRoadNode);
 		void InitiateNodeConnections();
 
@@ -126,10 +126,11 @@ namespace gh
 		void render2DScene();
 		void CalculateSplineToMousePos();
 		void testFunctionName();
+		int AddNodesToGetAsCloseAsPossibleToGoal(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
 		int	CalculateIntersectionConnection(const Vector3& mouseWorldPos);
 		int ConstructBestPossibleRoad(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
 		int ConstructRoadFromNodeWithIndex0(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
-		int ConstructRoadTowardsSpecifiedLocation(const Vector3& goalLocation, RoadNode* startNode, int indexOfNextTempNode);
+		int ConstructRoadTowardsSpecifiedLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
 		int ConstructTurnTowardsSpecifiedLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
 		int CreateDirectConnection(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
 		int BranchRoadFromSpecifiedNodeTowardsGoalLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode);
@@ -222,6 +223,8 @@ namespace gh
 		bool m_showDirectionOnPlacedRoads;
 		bool m_showDirectionOnTempNodes;
 		bool m_currentRoadIsNew;
+		float m_originalZVal;
+		float m_scale;
 	};
 	//=================================================================================================
 	///////////////////////////////////////////////////////////////////////////////////////////////////
