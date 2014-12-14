@@ -3499,7 +3499,11 @@ namespace gh
 
 							m_currentRoadNodeCluster->InitiateNodeConnections(true);
 							m_currentRoadNodeCluster->m_roadNodes[0]->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back());
-							m_currentRoadNodeCluster->m_roadNodes.back()->AddNextNode(m_currentRoadNodeCluster->m_roadNodes[0], true);
+
+							if(m_roadNodeClusterInRange == m_currentRoadNodeCluster)
+							{
+								m_currentRoadNodeCluster->m_roadNodes.back()->AddNextNode(m_currentRoadNodeCluster->m_roadNodes[0], true);
+							}
 						}
 						else
 						{
