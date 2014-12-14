@@ -99,8 +99,48 @@ namespace gh
 		m_location = newLocation;
 	}
 
-	void RoadNode::AddNextNode(RoadNode* nodeToAdd)
+	void RoadNode::AddNextNode(RoadNode* nodeToAdd, bool isPermanentlyAdded)
 	{
+		if( isPermanentlyAdded )
+		{
+			//check if the node is already on the list
+			bool nodeIsPresent = false;
+			for(int i = 0; i < Rotate_COUNT; ++i)
+			{
+				if(m_nextNodesDirection[i] == nodeToAdd)
+				{
+					nodeIsPresent = true;
+					break;
+				}
+			}
+
+			if(!nodeIsPresent)
+			{
+				if(m_nextNodes.empty()
+					|| m_nextNodesDirection[Rotate_NONE] == nullptr)
+				{
+					m_nextNodesDirection[Rotate_NONE] = nodeToAdd;
+				}
+				else
+				{
+					Matrix4X4 turn90CW = Matrix4X4::RotateZDegreesMatrix(-90);
+					Vector3 currentDirection = nodeToAdd->m_location - m_location;
+					Vector3 defaultDirection = GetTangentOfNode();
+					Vector3 defaultDirectionRotated90DegreeCW = turn90CW.TransformDirection(defaultDirection);
+
+					float dotProductResult = defaultDirectionRotated90DegreeCW.DotProduct(currentDirection);
+					if(dotProductResult > 0.f)
+					{
+						m_nextNodesDirection[Rotate_CW] = nodeToAdd;
+					}
+					else
+					{
+						m_nextNodesDirection[Rotate_CCW] = nodeToAdd;
+					}
+				}
+			}
+		}
+
 		//check that the node is not in our list
 		for(int i = 0; i < m_nextNodes.size(); ++i)
 		{
@@ -145,6 +185,52 @@ namespace gh
 		}
 	}
 
+	void RoadNode::ReplaceNextNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd)
+	{
+		int indexOfNode = -1;
+		for(int index = 0; index < m_nextNodes.size(); ++index)
+		{
+			if(nodeToRemove == m_nextNodes[index])
+			{
+				m_nextNodes[index] = nodeToAdd;
+				break;
+			}
+		}
+
+		for(int i = 0; i < Rotate_COUNT; ++i)
+		{
+			if(m_nextNodesDirection[i] == nodeToRemove)
+			{
+				m_nextNodesDirection[i] = nodeToAdd;
+			}
+		}
+
+		nodeToAdd->AddPreviousNode(this);
+	}
+
+	void RoadNode::ReplacePreviousNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd)
+	{
+		int indexOfNode = -1;
+		for(int index = 0; index < m_previousNodes.size(); ++index)
+		{
+			if(nodeToRemove == m_previousNodes[index])
+			{
+				m_previousNodes[index] = nodeToAdd;
+				break;
+			}
+		}
+
+		for(int i = 0; i < Rotate_COUNT; ++i)
+		{
+			if(m_previousNodesDirection[i] == nodeToRemove)
+			{
+				m_previousNodesDirection[i] = nodeToAdd;
+			}
+		}
+
+		nodeToAdd->AddNextNode(this, true);
+	}
+
 	Vector3 RoadNode::GetTangentOfNode()
 	{
 		Vector3 tangent;
@@ -163,6 +249,42 @@ namespace gh
 		}
 
 		return tangent;
+	}
+
+	RotationDirection RoadNode::GetBestPossibleDirectionToBranch( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
+		const Matrix4X4& maxCCWTransformationMatrix )
+	{
+		RotationDirection bestPossibleDirection = Rotate_NONE;
+		Vector3 normalizedDirectionCurrentNodeToGoal = goalLocation - m_location;
+		normalizedDirectionCurrentNodeToGoal.normalize();
+		Vector3 defaultDirectionOfIntersection = GetTangentOfNode();
+		defaultDirectionOfIntersection.normalize();
+		Vector3 clockwiseRotatedDirection = maxCWTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+		Vector3 counterClockwiseRotatedDirection = maxCCWTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+
+		//see which of the directions is closest to the one we are facing
+		float dotProductOfClosestDirection = -1.f;
+		float currentDotProduct = dotProductOfClosestDirection;
+
+		currentDotProduct = clockwiseRotatedDirection.DotProduct(normalizedDirectionCurrentNodeToGoal);
+		if(currentDotProduct > dotProductOfClosestDirection
+			&& (m_nextNodesDirection[Rotate_CW] == nullptr
+			|| !m_nextNodesDirection[Rotate_CW]->m_isValid))
+		{
+			bestPossibleDirection = Rotate_CW;
+			dotProductOfClosestDirection = currentDotProduct;
+		}
+
+		currentDotProduct = counterClockwiseRotatedDirection.DotProduct(normalizedDirectionCurrentNodeToGoal);
+		if(currentDotProduct > dotProductOfClosestDirection
+			&& (m_nextNodesDirection[Rotate_CCW] == nullptr
+			|| !m_nextNodesDirection[Rotate_CCW]->m_isValid))
+		{
+			bestPossibleDirection = Rotate_CCW;
+			dotProductOfClosestDirection = currentDotProduct;
+		}
+
+		return bestPossibleDirection;
 	}
 
 	//TODO:
@@ -227,14 +349,23 @@ namespace gh
 			m_intersectionConnectionsMap[m_previousNodes[i]].push_back(outgoingRoadNode);
 		}
 
-		m_nextNodes.push_back(outgoingRoadNode);
+		AddNextNode(outgoingRoadNode, true);
 	}
 
 	bool RoadNodeIntersection::AllowsForOutgoingNodes()
 	{
-		//TODO:
-		//Write implementation
-		return true;
+		bool allowsForOutgoingNodes = false;
+		for(int i = 0; i < Rotate_COUNT; ++i)
+		{
+			if(m_nextNodesDirection[i] == nullptr
+				|| !m_nextNodesDirection[i]->m_isValid)
+			{
+				allowsForOutgoingNodes = true;
+				break;
+			}
+		}
+
+		return allowsForOutgoingNodes;
 	}
 
 	void RoadNodeIntersection::GetDirectionOfBranchingSegments(std::vector<Vector3>& out_directionSegments)
@@ -382,7 +513,7 @@ namespace gh
 		return tangent;
 	}
 
-	void RoadNodeCluster::InitiateNodeConnections()
+	void RoadNodeCluster::InitiateNodeConnections(bool isPermanentlyAdded)
 	{
 		RoadNode* prevNode = nullptr;
 
@@ -390,11 +521,10 @@ namespace gh
 		{
 			if(prevNode)
 			{
-				prevNode->AddNextNode(m_roadNodes[nodeIndex]);
+				prevNode->AddNextNode(m_roadNodes[nodeIndex], isPermanentlyAdded);
 			}
 
 			m_roadNodes[nodeIndex]->AddPreviousNode(prevNode);
-
 			prevNode = m_roadNodes[nodeIndex];
 		}
 	}
@@ -441,7 +571,7 @@ namespace gh
 		,	m_currentRoadIsNew(false)
 		,	m_forkIntersectionNode(nullptr)
 		,	m_roadNodeClusterToSpawnFork(nullptr)
-		,	m_roadNodeIntersectionToForkFrom(nullptr)
+		,	m_intersectionNodeToForkFrom(nullptr)
 		,	m_indexOfForkNode(-1)
 		,	m_originalZVal(100.f)
 		,	m_scale(1.f)
@@ -2588,6 +2718,7 @@ namespace gh
 
 	int Application::BranchRoadFromSpecifiedNodeTowardsGoalLocation(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode)
 	{
+		int nodesAdded = 0;
 		int indexOfTempNodeToPlace = indexOfNextTempNode;
 		RoadNode* currentNode = startNode;
 
@@ -2595,38 +2726,25 @@ namespace gh
 		Vector3 distanceVector = goalLocation - startLocation;
 		Vector3 normalizedDirectionCurrentNodeToGoal = distanceVector;
 		normalizedDirectionCurrentNodeToGoal.normalize();
-
-		std::vector<Vector3> directionOfBranchingSegments;
-		m_roadNodeIntersectionToForkFrom->GetDirectionOfBranchingSegments(directionOfBranchingSegments);
-
-		for(int i = 0; i < directionOfBranchingSegments.size(); ++i)
-		{
-			directionOfBranchingSegments[i].normalize();
-		}
-
-		//We have 3 options
-		Vector3 defaultDirectionOfIntersection = m_roadNodeIntersectionToForkFrom->GetDefaultDirectionOfIntersection();
-		defaultDirectionOfIntersection.normalize();
-		Vector3 clockwiseRotatedDirection = m_roadMaxCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
-		Vector3 counterClockwiseRotatedDirection = m_roadMaxCCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+		
+		RotationDirection bestDirectionToRotate = startNode->GetBestPossibleDirectionToBranch(goalLocation,
+			m_roadMaxCWRotationTransformationMatrix, m_roadMaxCCWRotationTransformationMatrix);
 
 		//see which of the directions is closest to the one we are facing
-		Vector3 closestDirection = defaultDirectionOfIntersection;
-		float dotProductOfClosestDirection = defaultDirectionOfIntersection.DotProduct(normalizedDirectionCurrentNodeToGoal);
-		float currentDotProduct = dotProductOfClosestDirection;
+		Vector3 defaultDirectionOfIntersection = startNode->GetTangentOfNode();
+		defaultDirectionOfIntersection.normalize();
+		Vector3 closestDirection;
 
-		currentDotProduct = clockwiseRotatedDirection.DotProduct(normalizedDirectionCurrentNodeToGoal);
-		if(currentDotProduct > dotProductOfClosestDirection)
+		switch(bestDirectionToRotate)
 		{
-			closestDirection = clockwiseRotatedDirection;
-			dotProductOfClosestDirection = currentDotProduct;
-		}
-
-		currentDotProduct = counterClockwiseRotatedDirection.DotProduct(normalizedDirectionCurrentNodeToGoal);
-		if(currentDotProduct > dotProductOfClosestDirection)
-		{
-			closestDirection = counterClockwiseRotatedDirection;
-			dotProductOfClosestDirection = currentDotProduct;
+		case Rotate_CW:
+			closestDirection = m_roadMaxCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+			break;
+		case Rotate_CCW:
+			closestDirection = m_roadMaxCCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+			break;
+		default:
+			return 0;
 		}
 
 		//This adds the first node in the intended direction
@@ -2636,23 +2754,24 @@ namespace gh
 			//at the moment add a temporary node towards the closest direction
 			AddNewTempNode(indexOfTempNodeToPlace);
 
-			m_tempNodes[indexOfTempNodeToPlace]->SetLocation(m_roadNodeIntersectionToForkFrom->m_location + (closestDirection * m_lengthOfFragment));
+			m_tempNodes[indexOfTempNodeToPlace]->SetLocation(startLocation + (closestDirection * m_lengthOfFragment));
 			currentNode = m_tempNodes[indexOfTempNodeToPlace];
 			++indexOfTempNodeToPlace;
+			++nodesAdded;
 		}
 		else
 		{
 			return 0;
 		}
 
-		int nodesAdded = ConstructBestPossibleRoad(currentNode, goalLocation, indexOfTempNodeToPlace);
+		nodesAdded += ConstructBestPossibleRoad(currentNode, goalLocation, indexOfTempNodeToPlace);
 		return nodesAdded;
 	}
 
 	int Application::ConstructRoadFromNodeWithIndex0(RoadNode* startNode, const Vector3& goalLocation, int indexOfNextTempNode)
 	{
 		int nodesAdded = 0;
-		if(m_roadNodeIntersectionToForkFrom == nullptr)
+		if( startNode->GetTangentOfNode() == Vector3() )
 		{
 			nodesAdded = CreateDirectConnection(startNode, goalLocation, indexOfNextTempNode);
 		}
@@ -2675,107 +2794,49 @@ namespace gh
 		Vector3 mouseWorldPos;
 		bool mousePositionHitsDesiredElevation = GetMouseWorldPosWithSpecifiedZ(mouseWorldPos, 0.f);
 
-		
-		if( s_inputLogger->IsCharacterDown('Q') )
-		{
-			//Check if we need to automatically finish the road
-			CheckForRoadNodesWithinRange(mouseWorldPos, m_roadNodeClusterInRange, m_roadNodeInRange, m_intersectionNodeIndex);
-			if(m_roadNodeInRange == nullptr)
-			{
-				CheckForIntersectionNodesWithinRange(mouseWorldPos, m_intersectionNodeInRange, m_intersectionNodeIndex);
-				m_roadNodeInRange = m_intersectionNodeInRange;
-			}
-
-			if(m_roadNodeInRange)
-			{
-				int nodesAdded = CalculateIntersectionConnection(mouseWorldPos);
-				m_indexOfLastTempNode = m_indexOfLastPermanentNode + nodesAdded;
-			}
-			return;
-		}
+		RoadNode* currentNode = m_tempNodes[m_indexOfLastPermanentNode];
+		int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
+		int nodesAdded = 0;
 
 		if(mousePositionHitsDesiredElevation)
 		{
-			RoadNode* currentNode = m_tempNodes[m_indexOfLastPermanentNode];
-
-			//calculate the distance and direction from the last node to the mouse
-			Vector3 deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
-			deltaDistanceCurrentNodeToMouse.z = 0.f;			//make sure to zero out the z axis
-
-			Vector3 normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
-			normalizedDirectionCurrentNodeToMouse.normalize();
-
-			float distanceSquaredFromLastPermanentNode = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
-
-			//variables used to recalculate the best path to the mouse cursor
-			int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
-			int sizeOfNodeHolder = m_tempNodes.size();
-			Vector3 locationOfNextNode;
-
-			//Add the next road nodes in any available direction
-			if(m_indexOfLastPermanentNode == 0)
+			if( s_inputLogger->IsCharacterDown('Q') )
 			{
-				int nodesAdded = ConstructRoadFromNodeWithIndex0(currentNode, mouseWorldPos, indexOfTempNodeToPlace);
-				indexOfTempNodeToPlace += nodesAdded;
-				m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
+				//Check if we need to automatically finish the road
+				CheckForRoadNodesWithinRange(mouseWorldPos, m_roadNodeClusterInRange, m_roadNodeInRange, m_intersectionNodeIndex);
+				if(m_roadNodeInRange == nullptr)
+				{
+					CheckForIntersectionNodesWithinRange(mouseWorldPos, m_intersectionNodeInRange, m_intersectionNodeIndex);
+					m_roadNodeInRange = m_intersectionNodeInRange;
+				}
+
+				if(m_roadNodeInRange)
+				{
+					nodesAdded = CalculateIntersectionConnection(mouseWorldPos);
+				}
 			}
 			else
 			{
-				int nodesAdded = ConstructBestPossibleRoad(currentNode, mouseWorldPos, indexOfTempNodeToPlace);
-				indexOfTempNodeToPlace += nodesAdded;
-				m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
-					/*//keep adding nodes if the distance is greater than the size of one segment
-					NodeInformation nextNodeInformation;
-					while(distanceSquared > m_lengthOfFragmentSquared)
+				//Add the next road nodes in any available direction
+				if(m_indexOfLastPermanentNode == 0)
+				{
+					nodesAdded = ConstructRoadFromNodeWithIndex0(currentNode, mouseWorldPos, indexOfTempNodeToPlace);
+				}
+				else
+				{
+					if(currentNode->m_nextNodes.empty())
 					{
-						deltaDistanceCurrentNodeToMouse = mouseWorldPos - currentNode->m_location;
-						normalizedDirectionCurrentNodeToMouse = deltaDistanceCurrentNodeToMouse;
-						normalizedDirectionCurrentNodeToMouse.normalize();
-						distanceSquared = deltaDistanceCurrentNodeToMouse.calculateRadialDistanceSquared();
-
-						//calculate the direction of the last segment
-						normalizedDirectionOfLastSegment = m_tempNodes[indexOfTempNodeToPlace - 1]->m_location
-							- m_tempNodes[indexOfTempNodeToPlace - 2]->m_location;
-						normalizedDirectionOfLastSegment.normalize();
-
-						normalizedDirectionOfLastSegmentRotated90DegreesCW = 
-							clockwise90DegreeRotation.TransformDirection(normalizedDirectionOfLastSegment);
-
-						//check if we are rotating clockwise or counterclockwise
-						float dotProductLastSegment90CWAndDirectionCurrentNodeToMouse
-							= normalizedDirectionOfLastSegmentRotated90DegreesCW.DotProduct(normalizedDirectionCurrentNodeToMouse);
-
-						Matrix4X4 rotationMatrix = clockwiseMaxRotation;
-						if(dotProductLastSegment90CWAndDirectionCurrentNodeToMouse < 0.f )
-						{
-							rotationMatrix = counterClockwiseMaxRotation;
-						}
-
-						//get the location of the next fragment rotated towards the desired direction
-						if(GetInformationOfNextRoadNodeRotatedTowardsTheDesiredDirection(normalizedDirectionCurrentNodeToMouse,
-							rotationMatrix, m_maxTurnAngleDotProductForRoadSegments, indexOfTempNodeToPlace - 1, nextNodeInformation))
-						{
-							//check our stopping conditions
-							float newDistanceSquared = (nextNodeInformation.location - mouseWorldPos).calculateRadialDistanceSquared();
-
-							//we are getting farther away from the mouse
-							//ignore the condition if the fragment is the first one we are attempting to place
-							if(newDistanceSquared > distanceSquared)
-							{
-								break;
-							}
-
-							//check if we need to add a new RoadNode
-							AddNewTempNode(indexOfTempNodeToPlace);
-
-							m_tempNodes[indexOfTempNodeToPlace]->SetLocation(nextNodeInformation.location);
-							currentNode = m_tempNodes[indexOfTempNodeToPlace];
-							++indexOfTempNodeToPlace;
-						}
-					}*/
-
-				//m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
+						nodesAdded = ConstructBestPossibleRoad(currentNode, mouseWorldPos, indexOfTempNodeToPlace);
+					}
+					else
+					{
+						nodesAdded = BranchRoadFromSpecifiedNodeTowardsGoalLocation(currentNode, mouseWorldPos, indexOfTempNodeToPlace);
+					}
+				}
 			}
+
+			indexOfTempNodeToPlace += nodesAdded;
+			m_indexOfLastTempNode = indexOfTempNodeToPlace - 1;
 
 			for(int i = m_indexOfLastPermanentNode + 1; i < indexOfTempNodeToPlace; ++i)
 			{
@@ -2787,8 +2848,6 @@ namespace gh
 		{
 			m_tempNodes[m_indexOfLastTempNode]->RemoveNextNode(m_tempNodes[m_indexOfLastTempNode + 1]);
 		}
-
-
 	}
 
 	void Application::AddNewTempNode( int indexOfNewNode )
@@ -3148,7 +3207,7 @@ namespace gh
 	{
 		if(!roadToAdd->m_roadNodes.empty())
 		{
-			roadToAdd->InitiateNodeConnections();
+			roadToAdd->InitiateNodeConnections(true);
 			m_roadNodeClusters.push_back(roadToAdd);
 
 			return true;
@@ -3195,12 +3254,30 @@ namespace gh
 		}
 		RoadNodeIntersection* newIntersection = new RoadNodeIntersection(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex]);
 
+		if(!roadBeforeIntersection->m_roadNodes.empty())
+		{
+			roadBeforeIntersection->m_roadNodes.back()->ReplaceNextNodeWithSpecifiedNode(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex],
+				newIntersection);
+		}
+		if(!roadAfterIntersection->m_roadNodes.empty())
+		{
+			roadAfterIntersection->m_roadNodes[0]->ReplacePreviousNodeWithSpecifiedNode(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex],
+				newIntersection);
+		}
 		//check the size of each new road
 		AddRoad(roadAfterIntersection);
 		AddRoad(roadBeforeIntersection);
 
 		m_intersectionNodes.push_back(newIntersection);
 		return newIntersection;
+	}
+
+	void Application::AddCurrentRoadToIntersection(RoadNode* intersection)
+	{
+		if(m_currentRoadNodeCluster)
+		{
+			intersection->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back());
+		}
 	}
 
 	void Application::readMouseClick(const Vector2& mouseClickLocation)
@@ -3217,16 +3294,21 @@ namespace gh
 					m_currentRoadNodeCluster->AddNode(m_tempNodes[i]);
 					m_tempNodes[i]->m_isValid = true;
 				}
-				m_currentRoadNodeCluster->InitiateNodeConnections();
+				m_currentRoadNodeCluster->InitiateNodeConnections(true);
 				m_indexOfLastPermanentNode = m_indexOfLastTempNode;
 
 				//check if we are forking the road
 				if(m_forkIntersectionNode)
 				{
-					RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterToSpawnFork, m_indexOfForkNode);
-					newIntersection->AddOutgoingRoadNode(m_currentRoadNodeCluster->m_roadNodes[0]);
+					if(m_intersectionNodeToForkFrom == nullptr)
+					{
+						m_intersectionNodeToForkFrom = ConvertNodeToIntersection(m_roadNodeClusterToSpawnFork, m_indexOfForkNode);
+					}
+					
+					m_intersectionNodeToForkFrom->AddOutgoingRoadNode(m_currentRoadNodeCluster->m_roadNodes[0]);
 
 					m_forkIntersectionNode = nullptr;
+					m_intersectionNodeToForkFrom = nullptr;
 					m_roadNodeClusterToSpawnFork = nullptr;
 					m_indexOfForkNode = -1;
 				}
@@ -3262,14 +3344,10 @@ namespace gh
 								}
 								delete m_roadNodeClusterInRange;
 							}
-							else
-							{
-								m_currentRoadNodeCluster->m_roadNodes[0]->AddNextNode(m_currentRoadNodeCluster->m_roadNodes.back());
-								m_currentRoadNodeCluster->m_roadNodes.back()->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes[0]);
-							}
 
-							m_currentRoadNodeCluster->InitiateNodeConnections();
-							m_roadNodeClusterInRange = nullptr;
+							m_currentRoadNodeCluster->InitiateNodeConnections(true);
+							m_currentRoadNodeCluster->m_roadNodes[0]->AddNextNode(m_currentRoadNodeCluster->m_roadNodes.back(), true);
+							m_currentRoadNodeCluster->m_roadNodes.back()->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes[0]);
 						}
 						else
 						{
@@ -3283,6 +3361,7 @@ namespace gh
 					//at this point we are interacting with an existing intersection
 					else
 					{
+						AddCurrentRoadToIntersection(m_roadNodeInRange);
 						ExitSplineMode();
 					}
 				}
@@ -3298,11 +3377,31 @@ namespace gh
 				RoadNodeCluster* currentRoadNodeCluster = nullptr;
 
 				int indexOfClosestNode = -1;
+				int indexOfClosestIntersection = -1;
 				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode, indexOfClosestNode);
-				if(currentRoadNodeCluster == nullptr)
+				if(indexOfClosestNode < 1)
 				{
-					CheckForIntersectionNodesWithinRange(mouseWorldPosition, closestIntersectionNode, indexOfClosestNode);
+					currentRoadNode = nullptr;
+					currentRoadNodeCluster = nullptr;
+				}
+				CheckForIntersectionNodesWithinRange(mouseWorldPosition, closestIntersectionNode, indexOfClosestIntersection);
+
+				if(currentRoadNode && closestIntersectionNode)
+				{
+					Vector3 distanceRoadNodeToMouse = mouseWorldPosition - currentRoadNode->m_location;
+					Vector3 distanceIntersectionToMouse = mouseWorldPosition - closestIntersectionNode->m_location;
+
+					if(distanceIntersectionToMouse.calculateRadialDistanceSquared() < 
+						distanceRoadNodeToMouse.calculateRadialDistanceSquared())
+					{
+						currentRoadNode = closestIntersectionNode;
+						indexOfClosestNode = indexOfClosestIntersection;
+					}
+				}
+				else if(closestIntersectionNode)
+				{
 					currentRoadNode = closestIntersectionNode;
+					indexOfClosestNode = indexOfClosestIntersection;
 				}
 
 				if(currentRoadNode != nullptr)
@@ -3346,7 +3445,8 @@ namespace gh
 						{
 							m_tempNodes.push_back(currentRoadNode);
 							m_indexOfLastPermanentNode = 0;
-							m_roadNodeIntersectionToForkFrom = closestIntersectionNode;
+							m_forkIntersectionNode = closestIntersectionNode;
+							m_intersectionNodeToForkFrom = closestIntersectionNode;
 							m_currentRoadNodeCluster = new RoadNodeCluster();
 							m_currentRoadIsNew = true;
 							m_splineMode = true;
@@ -3491,11 +3591,13 @@ namespace gh
 		m_indexOfLastPermanentNode = 0;
 		m_indexOfLastTempNode = 0;
 		m_splineMode = false;
+		m_roadNodeInRange = nullptr;
+		m_roadNodeClusterInRange = nullptr;
 		m_currentRoadNodeCluster = nullptr;
 		m_currentRoadIsNew = false;
 		m_forkIntersectionNode = nullptr;
-		m_roadNodeIntersectionToForkFrom = nullptr;
 		m_roadNodeClusterToSpawnFork = nullptr;
+		m_intersectionNodeToForkFrom = nullptr;
 		m_indexOfForkNode = -1;
 	}
 
