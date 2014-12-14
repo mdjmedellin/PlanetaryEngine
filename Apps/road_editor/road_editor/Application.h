@@ -87,6 +87,8 @@ namespace gh
 		virtual Vector3 GetTangentOfNode();
 		virtual RotationDirection GetBestPossibleDirectionToBranch( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
 			const Matrix4X4& maxCCWTransformationMatrix );
+		virtual RotationDirection GetBestPossibleDirectionToMerge( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
+			const Matrix4X4& maxCCWTransformationMatrix );
 		void ReplaceNextNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd);
 		void ReplacePreviousNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd);
 		Vector3 m_location;

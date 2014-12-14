@@ -287,6 +287,41 @@ namespace gh
 		return bestPossibleDirection;
 	}
 
+	gh::RotationDirection RoadNode::GetBestPossibleDirectionToMerge( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix, const Matrix4X4& maxCCWTransformationMatrix )
+	{
+		RotationDirection bestPossibleDirection = Rotate_NONE;
+		Vector3 normalizedDirectionCurrentNodeToGoal = goalLocation - m_location;
+		normalizedDirectionCurrentNodeToGoal.normalize();
+		Vector3 defaultDirectionOfIntersection = -GetTangentOfNode();
+		defaultDirectionOfIntersection.normalize();
+		Vector3 clockwiseRotatedDirection = maxCWTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+		Vector3 counterClockwiseRotatedDirection = maxCCWTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+
+		//see which of the directions is closest to the one we are facing
+		float dotProductOfClosestDirection = -1.f;
+		float currentDotProduct = dotProductOfClosestDirection;
+
+		currentDotProduct = clockwiseRotatedDirection.DotProduct(normalizedDirectionCurrentNodeToGoal);
+		if(currentDotProduct > dotProductOfClosestDirection
+			&& (m_previousNodesDirection[Rotate_CW] == nullptr
+			|| !m_previousNodesDirection[Rotate_CW]->m_isValid))
+		{
+			bestPossibleDirection = Rotate_CW;
+			dotProductOfClosestDirection = currentDotProduct;
+		}
+
+		currentDotProduct = counterClockwiseRotatedDirection.DotProduct(normalizedDirectionCurrentNodeToGoal);
+		if(currentDotProduct > dotProductOfClosestDirection
+			&& (m_previousNodesDirection[Rotate_CCW] == nullptr
+			|| !m_previousNodesDirection[Rotate_CCW]->m_isValid))
+		{
+			bestPossibleDirection = Rotate_CCW;
+			dotProductOfClosestDirection = currentDotProduct;
+		}
+
+		return bestPossibleDirection;
+	}
+
 	//TODO:
 	//Intersections should not have a null incoming, nor a null outgoing node
 	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/, float sizeMultiplier )
@@ -2165,16 +2200,25 @@ namespace gh
 
 	int Application::CalculateIntersectionConnection(const Vector3& mouseWorldPos)
 	{
+		if(!m_roadNodeInRange)
+		{
+			return 0;
+		}
+
 		int indexOfTempNodeToPlace = m_indexOfLastPermanentNode + 1;
+		Vector3 startLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+		Vector3 endLocation = m_roadNodeInRange->m_location;
+		Vector3 distanceVector = endLocation - startLocation;
+		Vector3 normalizedDirectionStartToEnd = distanceVector;
+		normalizedDirectionStartToEnd.normalize();
 
 		//find the tangent of the current node
 		Vector3 startTangent = m_tempNodes[m_indexOfLastPermanentNode]->GetTangentOfNode();
 		if(startTangent == Vector3())
 		{
-			startTangent = mouseWorldPos - m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+			startTangent = distanceVector;
 		}
 
-		//tangent of the node we are attempting to merge into
 		Vector3 endTangent;
 		endTangent = m_roadNodeInRange->GetTangentOfNode();
 
@@ -2193,33 +2237,73 @@ namespace gh
 		//try to get the road to face the direction of the new node
 		//figure out what direction to bend
 		//CW or CCW
+		RotationDirection bestDirectionToRotateStartNode = 
+			m_tempNodes[m_indexOfLastPermanentNode]->GetBestPossibleDirectionToBranch(endLocation,
+			m_roadMaxCWRotationTransformationMatrix, m_roadMaxCCWRotationTransformationMatrix);
+
+		//see which of the directions is closest to the one we are facing
+		Vector3 defaultDirectionOfIntersection = startDirection;
+		Vector3 closestDirection = defaultDirectionOfIntersection;
+
+		switch(bestDirectionToRotateStartNode)
+		{
+		case Rotate_CW:
+			closestDirection = m_roadMaxCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+			break;
+		case Rotate_CCW:
+			closestDirection = m_roadMaxCCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+			break;
+		default:
+			break;
+		}
+
+		//This adds the first node in the intended direction
+		if(closestDirection.DotProduct(normalizedDirectionStartToEnd) < m_maxTurnAngleDotProductForRoadSegments)
+		{
+			//at the moment add a temporary node towards the closest direction
+			AddNewTempNode(indexOfTempNodeToPlace);
+			m_tempNodes[indexOfTempNodeToPlace]->SetLocation(startLocation + (closestDirection * m_lengthOfFragment));
+			startLocation = m_tempNodes[indexOfTempNodeToPlace]->m_location;
+
+			//find the tangent of the current node
+			startTangent = m_tempNodes[indexOfTempNodeToPlace]->GetTangentOfNode();
+			distanceVector = endLocation - startLocation;
+			normalizedDirectionStartToEnd = distanceVector;
+			normalizedDirectionStartToEnd.normalize();
+			if(startTangent == Vector3())
+			{
+				startTangent = distanceVector;
+			}
+			startTangent.normalize();
+			startDirection = startTangent;
+			startDirection.z = 0.f;
+
+			++indexOfTempNodeToPlace;
+		}
+
+
 		std::vector< RoadNode* > localNodeContainer;
-		AddNodesToFaceSpecifiedLocation(m_roadNodeInRange->m_location, m_tempNodes[m_indexOfLastPermanentNode]->m_location,
-			startDirection, localNodeContainer);
+		AddNodesToFaceSpecifiedLocation(endLocation, startLocation, startDirection, localNodeContainer);
 
-		Vector3 endLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+
+		Vector3 newEndLocation = m_tempNodes[m_indexOfLastTempNode]->m_location;
 		int nodeContainerSize = localNodeContainer.size();
-
 		Vector3 newDesiredDirection = startDirection;
+		
 		if(nodeContainerSize > 1)
 		{
-			endLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
-
+			newEndLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
 			newDesiredDirection = localNodeContainer[nodeContainerSize - 1]->m_location 
 				- localNodeContainer[nodeContainerSize - 2]->m_location;
 		}
 		else if(nodeContainerSize > 0)
 		{
-			endLocation = localNodeContainer[0]->m_location;
-
+			newEndLocation = localNodeContainer[0]->m_location;
 			newDesiredDirection = localNodeContainer[0]->m_location - m_tempNodes[m_indexOfLastPermanentNode]->m_location;
 		}
 		newDesiredDirection *= -1.f;
 
-		Vector3 newStartDirection = -endDirection;
-		RotationDirection directionToRotate = GetBestWayToRotateToFaceLocation(m_roadNodeInRange->m_location, 
-			newStartDirection, endLocation);
-
+		//clean up the nodes
 		//delete the nodes and empty the array of nodes created temporarily
 		for(int nodeIndex = 0; nodeIndex < nodeContainerSize; ++nodeIndex)
 		{
@@ -2227,29 +2311,67 @@ namespace gh
 		}
 		localNodeContainer.clear();
 
-		AddNodesToFaceSpecifiedDirection(newDesiredDirection, newStartDirection, m_roadNodeInRange->m_location,
-			localNodeContainer, directionToRotate);
+		//figure out the best way to rotate for the merging
+		//tangent of the node we are attempting to merge into
+		RotationDirection bestDirectionToRotateEndNode = m_roadNodeInRange->GetBestPossibleDirectionToMerge(newEndLocation,
+			m_roadMaxCWRotationTransformationMatrix, m_roadMaxCCWRotationTransformationMatrix);
 
-		Vector3 currentEndDirection = -endTangent;
-		endLocation = m_roadNodeInRange->m_location;
-		nodeContainerSize = localNodeContainer.size();
-		if(nodeContainerSize > 1)
+		//see which of the directions is closest to the one we are facing
+		defaultDirectionOfIntersection = -endDirection;
+		closestDirection = defaultDirectionOfIntersection;
+
+		switch(bestDirectionToRotateEndNode)
 		{
-			endLocation = localNodeContainer[nodeContainerSize - 1]->m_location;
-
-			currentEndDirection = endLocation - localNodeContainer[nodeContainerSize - 2]->m_location;
+		case Rotate_CW:
+			closestDirection = m_roadMaxCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+			break;
+		case Rotate_CCW:
+			closestDirection = m_roadMaxCCWRotationTransformationMatrix.TransformDirection(defaultDirectionOfIntersection);
+			break;
+		default:
+			break;
 		}
-		else if(nodeContainerSize > 0)
+
+		float distanceBetweenStartAndGoalSquared = distanceVector.calculateRadialDistanceSquared();
+
+		Vector3 currentEndDirection = -endDirection;
+		std::vector< RoadNode* > tempEndNodeContainer;
+
+		if( closestDirection.DotProduct( -normalizedDirectionStartToEnd ) < m_maxTurnAngleDotProductForRoadSegments )
 		{
-			endLocation = localNodeContainer[0]->m_location;
+			tempEndNodeContainer.push_back(new RoadNode());
+			tempEndNodeContainer.back()->m_location = (closestDirection * m_lengthOfFragment) + endLocation;
 
-			currentEndDirection = endLocation - m_roadNodeInRange->m_location;
+			AddNodesToFaceSpecifiedDirection(newDesiredDirection, closestDirection, tempEndNodeContainer.back()->m_location,
+				tempEndNodeContainer, bestDirectionToRotateEndNode, 1);
+
+			nodeContainerSize = tempEndNodeContainer.size();
+
+			if(nodeContainerSize > 1)
+			{
+				endLocation = tempEndNodeContainer[nodeContainerSize - 1]->m_location;
+				currentEndDirection = endLocation - tempEndNodeContainer[nodeContainerSize - 2]->m_location;
+			}
+			else if(nodeContainerSize > 0)
+			{
+				endLocation = tempEndNodeContainer[0]->m_location;
+				currentEndDirection = endLocation - m_roadNodeInRange->m_location;
+			}
+			currentEndDirection.normalize();
+
+			distanceVector = endLocation - startLocation;
+			normalizedDirectionStartToEnd = distanceVector;
+			normalizedDirectionStartToEnd.normalize();
+
+			endTangent = -currentEndDirection;
+			endTangent.normalize();
+
+			endDirection = endTangent;
+			endDirection.z = 0.f;
 		}
-		currentEndDirection.normalize();
-
+		
 		Vector3 currentStartDirection = startDirection;
 		std::vector <RoadNode* > tempStartNodes;
-
 
 		Vector3 currentDesiredEndDirection;
 		Vector3 currentDesiredEndDirectionRotated90CW;
@@ -2257,51 +2379,57 @@ namespace gh
 		Vector3 currentDesiredStartDirection;
 		Vector3 currentDesiredStartDirectionRotated90CW;
 		Matrix4X4 currentStartDirectionRotationMatrix;
-		Vector3 currentStartLocation = m_tempNodes[m_indexOfLastPermanentNode]->m_location;
+		Vector3 currentStartLocation = startLocation;
 		Vector3 currentEndLocation = endLocation;
 		bool keepIterating = true;
 		int maxIterations = 100;		//There needs to be a better way to identify cases where one a connection cannot be made
-
-		Matrix4X4 clockwise90DegreeRotation = Matrix4X4::RotateZDegreesMatrix(-90.f);
-		Matrix4X4 clockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(-m_maxYawRotationDegreesForRoadSegments);
-		Matrix4X4 counterClockwiseMaxRotation = Matrix4X4::RotateZDegreesMatrix(m_maxYawRotationDegreesForRoadSegments);
 
 		while(keepIterating 
 			&& maxIterations > 0)
 		{
 			currentDesiredEndDirection =  currentStartLocation - currentEndLocation;
 			currentDesiredEndDirection.normalize();
-			currentDesiredEndDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredEndDirection);
+			currentDesiredEndDirectionRotated90CW = m_rotationMatrix90DegreesCW.TransformDirection(currentDesiredEndDirection);
 
-			currentEndDirectionRotationMatrix = clockwiseMaxRotation;
+			currentEndDirectionRotationMatrix = m_roadMaxCWRotationTransformationMatrix;
 			if(currentEndDirection.DotProduct(currentDesiredEndDirectionRotated90CW) > 0.f)
 			{
-				currentEndDirectionRotationMatrix = counterClockwiseMaxRotation;
+				currentEndDirectionRotationMatrix = m_roadMaxCCWRotationTransformationMatrix;
 			}
 
 			currentDesiredStartDirection = -currentDesiredEndDirection;
-			currentDesiredStartDirectionRotated90CW = clockwise90DegreeRotation.TransformDirection(currentDesiredStartDirection);
+			currentDesiredStartDirectionRotated90CW = m_rotationMatrix90DegreesCW.TransformDirection(currentDesiredStartDirection);
 
-			currentStartDirectionRotationMatrix = clockwiseMaxRotation;
+			currentStartDirectionRotationMatrix = m_roadMaxCWRotationTransformationMatrix;
 			if(currentStartDirection.DotProduct(currentDesiredStartDirectionRotated90CW) > 0.f)
 			{
-				currentStartDirectionRotationMatrix = counterClockwiseMaxRotation;
+				currentStartDirectionRotationMatrix = m_roadMaxCCWRotationTransformationMatrix;
 			}
 
 			int nodesAdded = 0;
+			bool continueAddingNodes = true;
 			//start with the end location node
 			if(currentEndDirection.DotProduct(currentDesiredEndDirection) < m_maxTurnAngleDotProductForRoadSegments)
 			{
 				currentEndDirection = currentEndDirectionRotationMatrix.TransformDirection(currentEndDirection);
 				//add a new segment rotated towards the final direction
-				localNodeContainer.push_back(new RoadNode());
-				localNodeContainer.back()->m_location = currentEndLocation + (currentEndDirection * m_lengthOfFragment);
-				currentEndLocation = localNodeContainer.back()->m_location;
+				tempEndNodeContainer.push_back(new RoadNode());
+				tempEndNodeContainer.back()->m_location = currentEndLocation + (currentEndDirection * m_lengthOfFragment);
+				currentEndLocation = tempEndNodeContainer.back()->m_location;
 
 				++nodesAdded;
+
+				//check if the roads are matching now
+				currentDesiredEndDirection =  currentStartLocation - currentEndLocation;
+				currentDesiredEndDirection.normalize();
+				if(currentEndDirection.DotProduct(currentDesiredEndDirection) >= m_maxTurnAngleDotProductForRoadSegments)
+				{
+					continueAddingNodes = false;
+				}
 			}
 
-			if(currentStartDirection.DotProduct(currentDesiredStartDirection) < m_maxTurnAngleDotProductForRoadSegments)
+			if(currentStartDirection.DotProduct(currentDesiredStartDirection) < m_maxTurnAngleDotProductForRoadSegments
+				&& continueAddingNodes)
 			{
 				currentStartDirection = currentStartDirectionRotationMatrix.TransformDirection(currentStartDirection);
 				//add a new segment rotated towards the final direction
@@ -2310,9 +2438,17 @@ namespace gh
 				currentStartLocation = tempStartNodes.back()->m_location;
 
 				++nodesAdded;
+
+				currentDesiredStartDirection =  currentEndLocation - currentStartLocation;
+				currentDesiredStartDirection.normalize();
+				if(currentStartDirection.DotProduct(currentDesiredStartDirection) >= m_maxTurnAngleDotProductForRoadSegments)
+				{
+					continueAddingNodes = false;
+				}
 			}
 
-			if(nodesAdded == 0)
+			if(nodesAdded == 0
+				|| !continueAddingNodes)
 			{
 				break;
 			}
@@ -2322,9 +2458,9 @@ namespace gh
 
 		if(maxIterations <= 0)
 		{
-			for(int i = 0; i < localNodeContainer.size(); ++i)
+			for(int i = 0; i < tempEndNodeContainer.size(); ++i)
 			{
-				delete localNodeContainer[i];
+				delete tempEndNodeContainer[i];
 			}
 
 			for(int i = 0; i < tempStartNodes.size(); ++i)
@@ -2343,18 +2479,18 @@ namespace gh
 				++indexOfTempNodeToPlace;
 			}
 
-			for(int i = localNodeContainer.size() - 1; i > -1; --i)
+			for(int i = tempEndNodeContainer.size() - 1; i > -1; --i)
 			{
 				AddNewTempNode(indexOfTempNodeToPlace);
 
-				m_tempNodes[indexOfTempNodeToPlace]->m_location = localNodeContainer[i]->m_location;
+				m_tempNodes[indexOfTempNodeToPlace]->m_location = tempEndNodeContainer[i]->m_location;
 				++indexOfTempNodeToPlace;
 			}
 
 			//delete all the nodes that were created temporarily
-			for(int i = 0; i < localNodeContainer.size(); ++i)
+			for(int i = 0; i < tempEndNodeContainer.size(); ++i)
 			{
-				delete localNodeContainer[i];
+				delete tempEndNodeContainer[i];
 			}
 
 			for(int i = 0; i < tempStartNodes.size(); ++i)
@@ -2452,8 +2588,7 @@ namespace gh
 				float newDistanceSquared = (nextNodeInformation.location - goalLocation).calculateRadialDistanceSquared();
 
 				//we are getting farther away from the mouse
-				if( newDistanceSquared > distanceSquared
-					|| newDistanceSquared <= m_lengthOfFragmentSquared )
+				if( newDistanceSquared > distanceSquared )
 				{
 					break;
 				}
@@ -2706,11 +2841,11 @@ namespace gh
 		{
 			//the mouse cursor can be directly reached
 			//keep adding nodes if the distance is greater than the size of one segment
-			nodesAdded = ConstructRoadTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace);
+			nodesAdded += ConstructRoadTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace + nodesAdded);
 		}
 		else
 		{
-			nodesAdded = ConstructTurnTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace);
+			nodesAdded += ConstructTurnTowardsSpecifiedLocation(currentNode, goalLocation, indexOfTempNodeToPlace + nodesAdded);
 		}
 
 		return nodesAdded;
@@ -2817,6 +2952,8 @@ namespace gh
 			}
 			else
 			{
+				m_roadNodeInRange = nullptr;
+
 				//Add the next road nodes in any available direction
 				if(m_indexOfLastPermanentNode == 0)
 				{
@@ -3234,7 +3371,7 @@ namespace gh
 		//connecting to the first node
 		//connecting to the last node
 		//we will take care of those edgecases later
-
+		bool modifyRoadNodeClusterInRange = m_roadNodeClusterInRange == intersectionRoadNodeCluster;
 		RoadNodeCluster* roadBeforeIntersection = new RoadNodeCluster();
 		RoadNodeCluster* roadAfterIntersection = new RoadNodeCluster();
 
@@ -3250,6 +3387,8 @@ namespace gh
 
 		if(roadNodeClusterIndex > -1)
 		{
+			//TODO:
+			//Take into consideration roadnode cluster in range
 			m_roadNodeClusters.erase(m_roadNodeClusters.begin() + roadNodeClusterIndex);
 		}
 		RoadNodeIntersection* newIntersection = new RoadNodeIntersection(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex]);
@@ -3267,6 +3406,19 @@ namespace gh
 		//check the size of each new road
 		AddRoad(roadAfterIntersection);
 		AddRoad(roadBeforeIntersection);
+
+		if(modifyRoadNodeClusterInRange)
+		{
+			if(m_intersectionNodeIndex < intersectionNodeIndex)
+			{
+				m_roadNodeClusterInRange = roadBeforeIntersection;
+			}
+			else
+			{
+				m_roadNodeClusterInRange = roadAfterIntersection;
+				m_intersectionNodeIndex -= (intersectionNodeIndex + 1);
+			}
+		}
 
 		m_intersectionNodes.push_back(newIntersection);
 		return newIntersection;
@@ -3346,8 +3498,8 @@ namespace gh
 							}
 
 							m_currentRoadNodeCluster->InitiateNodeConnections(true);
-							m_currentRoadNodeCluster->m_roadNodes[0]->AddNextNode(m_currentRoadNodeCluster->m_roadNodes.back(), true);
-							m_currentRoadNodeCluster->m_roadNodes.back()->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes[0]);
+							m_currentRoadNodeCluster->m_roadNodes[0]->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back());
+							m_currentRoadNodeCluster->m_roadNodes.back()->AddNextNode(m_currentRoadNodeCluster->m_roadNodes[0], true);
 						}
 						else
 						{
@@ -3379,7 +3531,8 @@ namespace gh
 				int indexOfClosestNode = -1;
 				int indexOfClosestIntersection = -1;
 				CheckForRoadNodesWithinRange(mouseWorldPosition, currentRoadNodeCluster, currentRoadNode, indexOfClosestNode);
-				if(indexOfClosestNode < 1)
+				if(indexOfClosestNode < 0
+					|| currentRoadNode->GetTangentOfNode() == Vector3())
 				{
 					currentRoadNode = nullptr;
 					currentRoadNodeCluster = nullptr;
@@ -3458,6 +3611,7 @@ namespace gh
 				{
 					//we are not forking a road
 					RoadNode* newRoadNode = new RoadNode(mouseWorldPosition);
+					newRoadNode->m_isValid = true;
 
 					if(!m_currentRoadNodeCluster)
 					{
@@ -3465,6 +3619,7 @@ namespace gh
 						m_currentRoadNodeCluster = new RoadNodeCluster();
 					}
 
+					m_indexOfLastPermanentNode = 0;
 					m_currentRoadIsNew = true;
 					//add the node to the current node holder
 					m_currentRoadNodeCluster->AddNode(newRoadNode);
@@ -3569,7 +3724,9 @@ namespace gh
 	{
 		if(m_currentRoadIsNew)
 		{
-			if(m_currentRoadNodeCluster->m_roadNodes.size() > 1)
+			if(m_currentRoadNodeCluster->m_roadNodes.size() > 1
+				|| (!m_currentRoadNodeCluster->m_roadNodes.empty() 
+					&& m_currentRoadNodeCluster->m_roadNodes[0]->GetTangentOfNode() != Vector3()))
 			{
 				AddRoad(m_currentRoadNodeCluster);
 			}
