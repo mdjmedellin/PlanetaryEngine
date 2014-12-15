@@ -2447,8 +2447,7 @@ namespace gh
 				}
 			}
 
-			if(nodesAdded == 0
-				|| !continueAddingNodes)
+			if(nodesAdded == 0)
 			{
 				break;
 			}
@@ -2467,6 +2466,8 @@ namespace gh
 			{
 				delete tempStartNodes[i];
 			}
+
+			return 0;
 		}
 		else
 		{
