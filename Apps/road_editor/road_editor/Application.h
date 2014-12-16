@@ -111,6 +111,7 @@ namespace gh
 			const Matrix4X4& maxCCWTransformationMatrix );
 		virtual bool AllowsForks();
 		virtual bool AllowsMerging();
+		virtual RoadNode* GetNextNode();
 		void ReplaceNextNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd);
 		void ReplacePreviousNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd);
 		
@@ -135,6 +136,8 @@ namespace gh
 		void Render(MatrixStack& matrixStack, float scale = 1.f, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), bool renderDirection = false);
 		Vector3 GetTangentOfNodeAtSpecifiedIndex(int indexOfRoadNode);
 		void InitiateNodeConnections(bool isPermanentlyAdded = false);
+		bool IsConnectedToAnotherRoad();
+		RoadNodeCluster* GetConnectedRoad();
 
 		std::vector<RoadNode*> m_roadNodes;
 

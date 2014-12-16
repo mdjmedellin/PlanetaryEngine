@@ -542,6 +542,11 @@ namespace gh
 		return numberOfPermanentIncomingNodes;
 	}
 
+	RoadNode* RoadNode::GetNextNode()
+	{
+		return m_nextNodesDirection[Rotate_NONE];
+	}
+
 	//TODO:
 	//Intersections should not have a null incoming, nor a null outgoing node
 	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/, float sizeMultiplier )
@@ -794,6 +799,35 @@ namespace gh
 			m_roadNodes[nodeIndex]->AddPreviousNode(prevNode, isPermanentlyAdded);
 			prevNode = m_roadNodes[nodeIndex];
 		}
+	}
+
+	bool RoadNodeCluster::IsConnectedToAnotherRoad()
+	{
+		bool isConnectedToAnotherRoad = false;
+		RoadNode* nextNode;
+		if(!m_roadNodes.empty())
+		{
+			nextNode = m_roadNodes.back()->GetNextNode();
+
+			if(nextNode != nullptr
+				&& nextNode->m_nodeType == RoadNode_REGULAR)
+			{
+				isConnectedToAnotherRoad = true;
+			}
+		}
+
+		return isConnectedToAnotherRoad;
+	}
+
+	RoadNodeCluster* RoadNodeCluster::GetConnectedRoad()
+	{
+		if(IsConnectedToAnotherRoad())
+		{
+			RoadNode* nextNode = m_roadNodes.back()->GetNextNode();
+			return nextNode->m_roadNodeCluster;
+		}
+
+		return nullptr;
 	}
 
 
@@ -1865,6 +1899,12 @@ namespace gh
 		for(int roadNodeClusterIndex = 0; roadNodeClusterIndex < m_roadNodeClusters.size(); ++roadNodeClusterIndex)
 		{
 			currentRoadCluster = m_roadNodeClusters[roadNodeClusterIndex];
+
+			if(currentRoadCluster->m_hasBeenAdded)
+			{
+				continue;
+			}
+
 			//the road system used by the AI makes use of roads
 			//which are made up of lane clusters
 			//A lane cluster is a cluster of driving lanes going in the same direction
@@ -1886,10 +1926,34 @@ namespace gh
 				currentLane->pushLaneNode(currentLaneNode);
 			}
 
+			currentRoadCluster->m_hasBeenAdded = true;
+			currentRoadCluster = currentRoadCluster->GetConnectedRoad();
+			while(currentRoadCluster != nullptr)
+			{
+				for(int roadNodeIndex = 0; roadNodeIndex < currentRoadCluster->m_roadNodes.size(); ++roadNodeIndex)
+				{
+					currentRoadNode = currentRoadCluster->m_roadNodes[roadNodeIndex];
+					currentRoadNode->m_drivingLaneIndex = roadNodeClusterIndex;
+
+					currentLaneNode = new LaneNode();
+					currentLaneNode->m_position = currentRoadNode->m_location;
+
+					currentLane->pushLaneNode(currentLaneNode);
+				}
+				currentRoadCluster->m_hasBeenAdded = true;
+
+				currentRoadCluster = currentRoadCluster->GetConnectedRoad();
+			}
+			
 			currentLaneCluster->pushDrivingLane(currentLane);
 			currentRoad->pushLaneCluster(currentLaneCluster);
 
 			m_roadSystem->addRoad(currentRoad);
+		}
+
+		for(int i = 0; i < m_roadNodeClusters.size(); ++i)
+		{
+			m_roadNodeClusters[i]->m_hasBeenAdded = false;
 		}
 
 		std::vector< IntersectionConnection* > synchronizedLanes;
