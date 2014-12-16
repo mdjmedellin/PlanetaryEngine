@@ -14,8 +14,8 @@
 
 namespace
 {
-	const float vehicleWidth = 10.f;
-	const float vehicleLength = 10.f;
+	const float vehicleWidth = 20.f;
+	const float vehicleLength = 20.f;
 
 	const Vector2 halfVehicleDimensions( vehicleWidth * .5f, vehicleLength * .5f );
 	const AABB2 vehicleRenderQuad( -halfVehicleDimensions, halfVehicleDimensions );

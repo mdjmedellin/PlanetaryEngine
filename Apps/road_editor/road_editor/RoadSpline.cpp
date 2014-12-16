@@ -138,7 +138,7 @@ namespace gh
 		Vector3 calculatedPosition;
 
 
-		glPointSize( 2.f * scale );
+		glPointSize( 1.f * scale );
 		glColor3f( 1.f, 1.f, 0.f );
 		glBegin( GL_POINTS );
 		for( splineNodeIndex = 0; splineNodeIndex < m_splineNodes.size(); ++splineNodeIndex )

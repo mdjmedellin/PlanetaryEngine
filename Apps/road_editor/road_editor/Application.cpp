@@ -22,7 +22,7 @@
 
 namespace
 {
-	const int MAX_CAR_NUMBER = 1;
+	const int MAX_CAR_NUMBER = 4;
 	const float SIZE_OF_POINTS = 10.f;
 
 	//helper functions
@@ -3677,7 +3677,26 @@ namespace gh
 					{
 						ExitSplineMode();
 					}
-					initiateDrivingSystem();
+
+					if(g_editMode)
+					{
+						initiateDrivingSystem();
+					}
+					else
+					{
+						if(m_vehicleManager)
+						{
+							delete m_vehicleManager;
+							m_vehicleManager = nullptr;
+						}
+
+						if(m_roadSystem)
+						{
+							delete m_roadSystem;
+							m_roadSystem = nullptr;
+						}
+					}
+
 					g_editMode = !g_editMode;
 					break;
 
