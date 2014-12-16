@@ -22,7 +22,7 @@ namespace gh
 	public:
 		LaneCluster();
 		void update( double deltaTime );
-		void render( MatrixStack& currentMatrixStack );
+		void render( MatrixStack& currentMatrixStack, float scale );
 		DrivingLane* getRandomDrivingLane();
 		void pushDrivingLane( DrivingLane* drivingLaneAdded );
 		void setParentRoad( Road* parentRoad );

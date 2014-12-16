@@ -33,7 +33,7 @@ namespace gh
 		virtual void update( double deltaTime );
 
 		virtual ~DrivingSegment();
-		virtual void render( MatrixStack& currentMatrixStack, const Rgba& color = Rgba::WHITE );
+		virtual void render( MatrixStack& currentMatrixStack, float scale, const Rgba& color = Rgba::WHITE );
 		virtual bool placeVehicleRandomly( Vehicle* vehicleToPlace );
 		virtual bool placeVehicleAtSpecifiedLength( Vehicle* vehicleToPlace );
 		virtual bool removeVehicle( Vehicle* vehicleExitingLane );

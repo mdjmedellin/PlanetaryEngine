@@ -22,7 +22,7 @@ namespace gh
 	{
 	public:
 		IntersectionConnection( DrivingLane* incomingDrivingLane, DrivingLane* outgoingDrivingLane );
-		void renderIntersection( MatrixStack& currentMatrixStack, const Rgba& color );
+		void renderIntersection( MatrixStack& currentMatrixStack, float scale, const Rgba& color );
 		DrivingLane* getOutgoingLane();
 		DrivingLane* getIncomingLane();
 		DrivingSegment* getDrivingSegment();

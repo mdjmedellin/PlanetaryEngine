@@ -33,9 +33,9 @@ namespace gh
 		}
 	}
 
-	void DrivingSegment::render( MatrixStack& currentMatrixStack, const Rgba& color /* = Rgba::WHITE */ )
+	void DrivingSegment::render( MatrixStack& currentMatrixStack, float scale, const Rgba& color /* = Rgba::WHITE */ )
 	{
-		m_roadSpline->render(currentMatrixStack, color );
+		m_roadSpline->render(currentMatrixStack, scale, color );
 	}
 
 	bool DrivingSegment::placeVehicleRandomly( Vehicle* vehicleToPlace )

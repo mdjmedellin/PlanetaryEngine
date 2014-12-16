@@ -22,7 +22,7 @@ namespace gh
 	public:
 		Road();
 		void update( double deltaTime );
-		void render( MatrixStack& currentMatrixStack );
+		void render( MatrixStack& currentMatrixStack, float scale );
 		bool exitRoad( Vehicle* exitingVehicle );
 		void placeVehicleRandomly( Vehicle* vehicleToPlace );
 		void pushLaneCluster( LaneCluster* laneClusterAdded );

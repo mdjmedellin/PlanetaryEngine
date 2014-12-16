@@ -181,7 +181,7 @@ namespace gh
 		}
 	}
 
-	void Intersection::render( MatrixStack& currentMatrixStack )
+	void Intersection::render( MatrixStack& currentMatrixStack, float scale )
 	{
 		for( std::vector< IntersectionConnection* >::iterator currentIntersectionConnection = m_intersectionConnections.begin();
 			currentIntersectionConnection != m_intersectionConnections.end(); ++currentIntersectionConnection )
@@ -190,17 +190,17 @@ namespace gh
 			{
 			case RED_SIGNAL_LIGHT:
 				{
-					(*currentIntersectionConnection)->renderIntersection(currentMatrixStack, Rgba::RED );
+					(*currentIntersectionConnection)->renderIntersection(currentMatrixStack, scale, Rgba::RED );
 					break;
 				}
 			case YELLOW_SIGNAL_LIGHT:
 				{
-					(*currentIntersectionConnection)->renderIntersection(currentMatrixStack, Rgba( 1.f, 1.f, 0.f ).m_RGBA );
+					(*currentIntersectionConnection)->renderIntersection(currentMatrixStack, scale, Rgba( 1.f, 1.f, 0.f ).m_RGBA );
 					break;
 				}
 			case GREEN_SIGNAL_LIGHT:
 				{
-					(*currentIntersectionConnection)->renderIntersection(currentMatrixStack, Rgba::GREEN );
+					(*currentIntersectionConnection)->renderIntersection(currentMatrixStack, scale, Rgba::GREEN );
 					break;
 				}
 			}

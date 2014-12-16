@@ -34,7 +34,7 @@ namespace gh
 		RoadSystem();
 		~RoadSystem();
 		RoadPath* calculatePathTo( int endLaneIdentifier, float splineLocation, DrivingSegment* startingDrivingLane );
-		void render( MatrixStack& currentMatrixStack );
+		void render( MatrixStack& currentMatrixStack, float scale );
 		DrivingLane* getRandomLane();
 		void addRoad( Road* roadAdded );
 		void addIntersection( Intersection* intersection );

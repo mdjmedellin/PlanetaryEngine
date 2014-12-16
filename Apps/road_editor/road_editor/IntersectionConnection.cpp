@@ -6,9 +6,9 @@
 
 namespace gh
 {
-	void IntersectionConnection::renderIntersection( MatrixStack& currentMatrixStack, const Rgba& color )
+	void IntersectionConnection::renderIntersection( MatrixStack& currentMatrixStack, float scale, const Rgba& color )
 	{
-		m_drivingSegment->render( currentMatrixStack, color );
+		m_drivingSegment->render( currentMatrixStack, scale, color );
 	}
 
 	DrivingLane* IntersectionConnection::getOutgoingLane()

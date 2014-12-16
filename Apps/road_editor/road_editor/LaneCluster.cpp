@@ -19,11 +19,11 @@ namespace gh
 		//m_lanes.push_back( new DrivingLane() );
 	}
 
-	void LaneCluster::render( MatrixStack& currentMatrixStack )
+	void LaneCluster::render( MatrixStack& currentMatrixStack, float scale )
 	{
 		for( std::vector< DrivingLane* >::iterator currentLane = m_lanes.begin(); currentLane != m_lanes.end(); ++currentLane )
 		{
-			(*currentLane)->render( currentMatrixStack );
+			(*currentLane)->render( currentMatrixStack, scale );
 		}
 	}
 

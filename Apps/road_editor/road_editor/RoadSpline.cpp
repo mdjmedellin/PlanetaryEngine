@@ -125,7 +125,7 @@ namespace gh
 		}
 	} 
 
-	void RoadSpline::render( MatrixStack& currentMatrixStack, const Rgba& color /* = Rgba::WHITE */ )
+	void RoadSpline::render( MatrixStack& currentMatrixStack, float scale, const Rgba& color /* = Rgba::WHITE */ )
 	{
 		size_t splineNodeIndex = 0;
 		double t_squared = 0.0; 
@@ -138,7 +138,7 @@ namespace gh
 		Vector3 calculatedPosition;
 
 
-		glPointSize( 5.f );
+		glPointSize( 2.f * scale );
 		glColor3f( 1.f, 1.f, 0.f );
 		glBegin( GL_POINTS );
 		for( splineNodeIndex = 0; splineNodeIndex < m_splineNodes.size(); ++splineNodeIndex )

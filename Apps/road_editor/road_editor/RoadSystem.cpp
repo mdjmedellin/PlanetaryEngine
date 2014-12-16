@@ -14,18 +14,18 @@ namespace gh
 		:	m_roads( std::vector< Road* >() )
 	{}
 
-	void RoadSystem::render( MatrixStack& currentMatrixStack )
+	void RoadSystem::render( MatrixStack& currentMatrixStack, float scale )
 	{
 		//render all the roads
 		for( std::vector< Road* >::iterator currentRoad = m_roads.begin(); currentRoad != m_roads.end(); ++currentRoad )
 		{
-			(*currentRoad)->render( currentMatrixStack );
+			(*currentRoad)->render( currentMatrixStack, scale );
 		}
 		//render all the intersections
 		for( std::vector< Intersection* >::iterator currentIntersection = m_intersections.begin();
 			currentIntersection != m_intersections.end(); ++currentIntersection )
 		{
-			(*currentIntersection)->render( currentMatrixStack );
+			(*currentIntersection)->render( currentMatrixStack, scale );
 		}
 	}
 

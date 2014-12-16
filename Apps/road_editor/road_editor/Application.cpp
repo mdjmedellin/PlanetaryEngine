@@ -2203,7 +2203,7 @@ namespace gh
 		if(!g_editMode)
 		{
 			if(m_roadSystem)
-			m_roadSystem->render( m_matrixStack );
+			m_roadSystem->render( m_matrixStack, m_scale );
 		
 			if(m_vehicleManager)
 			m_vehicleManager->renderVehicles( m_matrixStack, m_scale );

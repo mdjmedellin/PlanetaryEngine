@@ -66,7 +66,7 @@ namespace gh
 		IntersectionCondition getIntersectionCondition( Vehicle* incomingVehicle );
 		void getConnectingLanes( std::vector< DrivingSegment* >& out_connectingLanes, DrivingSegment* incomingLane );
 		void getAllOutgoingLanes( std::vector< DrivingSegment* >& out_outgoingLanes );
-		void render( MatrixStack& currentMatrixStack );
+		void render( MatrixStack& currentMatrixStack, float scale );
 
 	private:
 		size_t m_currentSignalLight;

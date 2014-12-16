@@ -15,11 +15,11 @@ namespace gh
 		,	m_vehiclesOnRoad( std::vector< Vehicle* >() )
 	{}
 
-	void Road::render( MatrixStack& currentMatrixStack )
+	void Road::render( MatrixStack& currentMatrixStack, float scale )
 	{
 		for( std::vector< LaneCluster* >::iterator currentLaneCluster = m_laneClusters.begin(); currentLaneCluster != m_laneClusters.end(); ++currentLaneCluster )
 		{
-			(*currentLaneCluster)->render( currentMatrixStack );
+			(*currentLaneCluster)->render( currentMatrixStack, scale );
 		}
 	}
 

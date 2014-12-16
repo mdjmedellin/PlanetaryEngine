@@ -45,7 +45,7 @@ namespace gh
 		void pushLaneNode( LaneNode* in_laneNode );
 
 		virtual void createSpline();
-		virtual void render( MatrixStack& currentMatrixStack, const Rgba& color = Rgba::WHITE );
+		virtual void render( MatrixStack& currentMatrixStack, float scale, const Rgba& color = Rgba::WHITE );
 		virtual bool getPosition( float in_pointInSpline, Vector3& out_position );
 		virtual bool getDirection( float in_pointInSpline, Vector3& out_direction );
 		virtual float getRandomDistanceWithin();
