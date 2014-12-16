@@ -37,7 +37,7 @@ namespace gh
 		void setLocation( Vector3 vehicleLocation );
 		void setVelocity( Vector3 vehicleVelocity );
 		void setSteeringAngle( float steeringAngle );
-		void render( MatrixStack& currentMatrixStack );
+		void render( MatrixStack& currentMatrixStack, float scale );
 		DrivingSegment* getCurrentLane();
 		DrivingSegment* peekNextLane();
 		void setAsQueued();

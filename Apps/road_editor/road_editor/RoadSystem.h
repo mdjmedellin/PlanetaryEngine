@@ -39,6 +39,7 @@ namespace gh
 		void addRoad( Road* roadAdded );
 		void addIntersection( Intersection* intersection );
 		void update( double deltaTime );
+		DrivingLane* GetLaneWithSpecifiedIndex(int drivingLaneIndex);
 
 	private:
 		std::vector< Road* > m_roads;

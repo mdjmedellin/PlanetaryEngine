@@ -47,11 +47,15 @@ namespace gh
 		Vector3 direction;
 	};
 
+	struct RoadNodeCluster;
+
 	struct RoadNode
 	{
 		RoadNode(Vector3& location)
 			:	m_location(location)
 			,	m_nodeType(RoadNode_REGULAR)
+			,	m_drivingLaneIndex(-1)
+			,	m_roadNodeCluster(nullptr)
 		{
 			for(int i = 0; i < Rotate_COUNT; ++i)
 			{
@@ -63,6 +67,8 @@ namespace gh
 		RoadNode()
 			:	m_location(Vector3())
 			,	m_nodeType(RoadNode_REGULAR)
+			,	m_drivingLaneIndex(-1)
+			,	m_roadNodeCluster(nullptr)
 		{
 			for(int i = 0; i < Rotate_COUNT; ++i)
 			{
@@ -87,6 +93,7 @@ namespace gh
 			m_isValid = nodeToCopy->m_isValid;
 			m_location = nodeToCopy->m_location;
 			m_nodeType = RoadNode_REGULAR;
+			m_roadNodeCluster = nodeToCopy->m_roadNodeCluster;
 		}
 
 		void SetLocation(const Vector3& newLocation);
@@ -95,6 +102,7 @@ namespace gh
 		void AddNextNode(RoadNode* nodeToAdd, bool isPermanentlyAdded = false);
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
 		virtual int GetNumberOfPermanentOutgoingNodes();
+		virtual int GetNumberOfPermanentIncomingNodes();
 		virtual Vector3 GetTangentOfNode();
 		virtual Vector3 GetBackTangentOfNode();
 		virtual RotationDirection GetBestPossibleDirectionToBranch( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
@@ -113,11 +121,14 @@ namespace gh
 		RoadNode* m_nextNodesDirection[Rotate_COUNT];
 		RoadNode* m_previousNodesDirection[Rotate_COUNT];
 		RoadNodeType m_nodeType;
+		int m_drivingLaneIndex;
+		RoadNodeCluster* m_roadNodeCluster;
 	};
 
 	struct RoadNodeCluster
 	{
 		RoadNodeCluster()
+			:	m_hasBeenAdded(false)
 		{};
 
 		void AddNode(RoadNode* nodeToAdd);
@@ -126,6 +137,8 @@ namespace gh
 		void InitiateNodeConnections(bool isPermanentlyAdded = false);
 
 		std::vector<RoadNode*> m_roadNodes;
+
+		bool m_hasBeenAdded;
 	};
 
 	struct RoadNodeIntersection : public RoadNode

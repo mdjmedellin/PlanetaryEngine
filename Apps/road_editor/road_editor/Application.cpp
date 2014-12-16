@@ -276,17 +276,36 @@ namespace gh
 	{
 		Vector3 tangent;
 
-		if( !m_nextNodes.empty()
-			&& m_nextNodes[0] != nullptr 
-			&& m_nextNodes[0]->m_isValid)
+		if( !m_nextNodes.empty() )
 		{
-			tangent = m_nextNodes[0]->m_location - m_location;
+			RoadNode* currentRoadNode = nullptr;
+			for(int i = 0; i < m_nextNodes.size(); ++i)
+			{
+				currentRoadNode = m_nextNodes[i];
+
+				if(currentRoadNode != nullptr
+					&& currentRoadNode->m_isValid)
+				{
+					tangent = currentRoadNode->m_location - m_location;
+					return tangent;
+				}
+			}
 		}
-		else if( !m_previousNodes.empty() 
-					&& m_previousNodes[0] != nullptr
-					&& m_previousNodes[0]->m_isValid)
+		
+		if( !m_previousNodes.empty() )
 		{
-			tangent = m_location - m_previousNodes[0]->m_location;
+			RoadNode* currentRoadNode = nullptr;
+			for(int i = 0; i < m_previousNodes.size(); ++i)
+			{
+				currentRoadNode = m_previousNodes[i];
+
+				if(currentRoadNode != nullptr
+					&& currentRoadNode->m_isValid)
+				{
+					tangent = m_location - currentRoadNode->m_location;
+					return tangent;
+				}
+			}
 		}
 
 		return tangent;
@@ -296,17 +315,36 @@ namespace gh
 	{
 		Vector3 tangent;
 
-		if( !m_previousNodes.empty()
-			&& m_previousNodes[0] != nullptr 
-			&& m_previousNodes[0]->m_isValid)
+		if( !m_previousNodes.empty() )
 		{
-			tangent = m_previousNodes[0]->m_location - m_location;
+			RoadNode* currentRoadNode = nullptr;
+			for(int i = 0; i < m_previousNodes.size(); ++i)
+			{
+				currentRoadNode = m_previousNodes[i];
+
+				if(currentRoadNode != nullptr
+					&& currentRoadNode->m_isValid)
+				{
+					tangent = currentRoadNode->m_location - m_location;
+					return tangent;
+				}
+			}
 		}
-		else if( !m_nextNodes.empty() 
-			&& m_nextNodes[0] != nullptr
-			&& m_nextNodes[0]->m_isValid)
+
+		if( !m_nextNodes.empty() )
 		{
-			tangent = m_location - m_nextNodes[0]->m_location;
+			RoadNode* currentRoadNode = nullptr;
+			for(int i = 0; i < m_nextNodes.size(); ++i)
+			{
+				currentRoadNode = m_nextNodes[i];
+
+				if(currentRoadNode != nullptr
+					&& currentRoadNode->m_isValid)
+				{
+					tangent = m_location - currentRoadNode->m_location;
+					return tangent;
+				}
+			}
 		}
 
 		return tangent;
@@ -489,6 +527,21 @@ namespace gh
 		return allowsMerging;
 	}
 
+	int RoadNode::GetNumberOfPermanentIncomingNodes()
+	{
+		int numberOfPermanentIncomingNodes = 0;
+
+		for(int i = 0; i < Rotate_COUNT; ++i)
+		{
+			if(m_previousNodesDirection[i] != nullptr)
+			{
+				++numberOfPermanentIncomingNodes;
+			}
+		}
+
+		return numberOfPermanentIncomingNodes;
+	}
+
 	//TODO:
 	//Intersections should not have a null incoming, nor a null outgoing node
 	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/, float sizeMultiplier )
@@ -599,6 +652,7 @@ namespace gh
 	void RoadNodeCluster::AddNode(RoadNode* nodeToAdd)
 	{
 		m_roadNodes.push_back(nodeToAdd);
+		nodeToAdd->m_roadNodeCluster = this;
 	}
 
 	void RoadNodeCluster::Render(MatrixStack& matrixStack, float scale, const Vector3& nodeColor, bool renderDirection)
@@ -1824,6 +1878,7 @@ namespace gh
 			for(int roadNodeIndex = 0; roadNodeIndex < currentRoadCluster->m_roadNodes.size(); ++roadNodeIndex)
 			{
 				currentRoadNode = currentRoadCluster->m_roadNodes[roadNodeIndex];
+				currentRoadNode->m_drivingLaneIndex = roadNodeClusterIndex;
 
 				currentLaneNode = new LaneNode();
 				currentLaneNode->m_position = currentRoadNode->m_location;
@@ -1839,35 +1894,40 @@ namespace gh
 
 		std::vector< IntersectionConnection* > synchronizedLanes;
 
-		/*//add the intersection between the roads
-		IntersectionConnection* testIntersection = new IntersectionConnection( lane6_2_1, lane1_1_1 );
-		synchronizedLanes.push_back( testIntersection );
-		Intersection* intersectionCollection = new Intersection();
-		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
-		synchronizedLanes.clear();
+		RoadNodeIntersection* currentIntersectionNode = nullptr;
+		for(int intersectionNodeIndex = 0; intersectionNodeIndex < m_intersectionNodes.size(); ++intersectionNodeIndex)
+		{
+			synchronizedLanes.clear();
+			currentIntersectionNode = m_intersectionNodes[intersectionNodeIndex];
 
-		testIntersection = new IntersectionConnection( lane1_2_1, lane6_1_1 );
-		synchronizedLanes.push_back( testIntersection );
-		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
-		synchronizedLanes.clear();
+			RoadNode* incomingNode = nullptr;
+			for(int incomingNodeIndex = 0; incomingNodeIndex < Rotate_COUNT; ++incomingNodeIndex)
+			{
+				incomingNode = currentIntersectionNode->m_previousNodesDirection[incomingNodeIndex];
 
-		//add the intersection collection to the roadSystem
-		m_roadSystem->addIntersection( intersectionCollection );
-		intersectionCollection = new Intersection();
+				if(incomingNode != nullptr)
+				{
+					RoadNode* outgoingNode = nullptr;
+					for(int outgoingNodeIndex = 0; outgoingNodeIndex < Rotate_COUNT; ++outgoingNodeIndex)
+					{
+						outgoingNode = currentIntersectionNode->m_nextNodesDirection[outgoingNodeIndex];
+						if(outgoingNode != nullptr)
+						{
+							DrivingLane* incomingLane = m_roadSystem->GetLaneWithSpecifiedIndex(incomingNode->m_drivingLaneIndex);
+							DrivingLane* outgoingLane = m_roadSystem->GetLaneWithSpecifiedIndex(outgoingNode->m_drivingLaneIndex);
+							IntersectionConnection* intersectionLaneConnection = 
+								new IntersectionConnection(incomingLane, outgoingLane);
 
-		testIntersection = new IntersectionConnection( lane4_2_1, lane3_1_1 );
-		synchronizedLanes.push_back( testIntersection );
-		testIntersection = new IntersectionConnection( lane3_2_1, lane2_2_1 );
-		synchronizedLanes.push_back(testIntersection);
-		testIntersection = new IntersectionConnection( lane2_1_1, lane1_2_1 );
-		synchronizedLanes.push_back(testIntersection);
-		testIntersection = new IntersectionConnection( lane1_1_1, lane4_1_1);
-		synchronizedLanes.push_back(testIntersection);
-		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
-		synchronizedLanes.clear();
+							synchronizedLanes.push_back(intersectionLaneConnection);
+						}
+					}
+				}
+			}
 
-		m_roadSystem->addIntersection( intersectionCollection );
-		intersectionCollection = new Intersection();*/
+			Intersection* roadSystemIntersection = new Intersection();
+			roadSystemIntersection->addIntersectionConnections(synchronizedLanes, ALWAYS_STOP);
+			m_roadSystem->addIntersection(roadSystemIntersection);
+		}
 	}
 
 	void Application::drawOrigin( float lineLength )
@@ -2082,7 +2142,7 @@ namespace gh
 			m_roadSystem->render( m_matrixStack );
 		
 			if(m_vehicleManager)
-			m_vehicleManager->renderVehicles( m_matrixStack );
+			m_vehicleManager->renderVehicles( m_matrixStack, m_scale );
 		}
 		else
 		{
@@ -2723,21 +2783,27 @@ namespace gh
 		bool buildRoadNodeCluster = true;
 		Vector3 distanceVectorLastStartNodeToLastEndNode;
 
+		Vector3 tempEndNodesLastLocation;
 		if(!tempEndNodeContainer.empty())
 		{
+			tempEndNodesLastLocation = tempEndNodeContainer.back()->m_location;
 			distanceVectorLastStartNodeToLastEndNode = tempEndNodeContainer.back()->m_location;
 		}
 		else
 		{
+			tempEndNodesLastLocation = endLocation;
 			distanceVectorLastStartNodeToLastEndNode = endLocation;
 		}
 
+		Vector3 tempStartNodesLastLocation;
 		if(!tempStartNodes.empty())
 		{
+			tempStartNodesLastLocation = tempStartNodes.back()->m_location;
 			distanceVectorLastStartNodeToLastEndNode -= tempStartNodes.back()->m_location;
 		}
 		else
 		{
+			tempStartNodesLastLocation = startLocation;
 			distanceVectorLastStartNodeToLastEndNode -= startLocation;
 		}
 
@@ -2761,7 +2827,7 @@ namespace gh
 				nodesToAdd -= 1;
 			}
 
-			Vector3 currentLocation = tempStartNodes.back()->m_location;
+			Vector3 currentLocation = tempStartNodesLastLocation;
 			for(int i = 0; i < nodesToAdd; ++i)
 			{
 				tempStartNodes.push_back( new RoadNode() );
@@ -3547,7 +3613,7 @@ namespace gh
 					{
 						ExitSplineMode();
 					}
-					InitiateRoadSystemFromCurrentRoads();
+					initiateDrivingSystem();
 					g_editMode = !g_editMode;
 					break;
 
@@ -3627,7 +3693,10 @@ namespace gh
 	void Application::initiateDrivingSystem()
 	{
 		InitiateRoadSystemFromCurrentRoads();
-		m_vehicleManager = new VehicleManager(m_roadSystem, MAX_CAR_NUMBER);
+		if(m_vehicleManager == nullptr)
+		{
+			m_vehicleManager = new VehicleManager(m_roadSystem, MAX_CAR_NUMBER);
+		}
 
 		//initiateRoadSystem();
 		//m_vehicleManager = new VehicleManager( m_roadSystem, MAX_CAR_NUMBER );
@@ -3662,7 +3731,7 @@ namespace gh
 		for( auto currentVehicle = m_vehicles.begin(); currentVehicle != m_vehicles.end(); ++currentVehicle )
 		{
 			m_matrixStack.PushMatrix();
-			(*currentVehicle)->render( m_matrixStack );
+			(*currentVehicle)->render( m_matrixStack, m_scale );
 			m_matrixStack.PopMatrix();
 		}
 	}
@@ -3736,6 +3805,13 @@ namespace gh
 			roadBeforeIntersection->m_roadNodes.back()->ReplaceNextNodeWithSpecifiedNode(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex],
 				newIntersection);
 		}
+		else if(newIntersection->m_previousNodesDirection[Rotate_NONE] != nullptr
+			&& newIntersection->m_previousNodesDirection[Rotate_NONE]->m_isValid)
+		{
+			newIntersection->m_previousNodesDirection[Rotate_NONE]->ReplaceNextNodeWithSpecifiedNode(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex],
+				newIntersection);
+		}
+
 		if(!roadAfterIntersection->m_roadNodes.empty())
 		{
 			roadAfterIntersection->m_roadNodes[0]->ReplacePreviousNodeWithSpecifiedNode(intersectionRoadNodeCluster->m_roadNodes[intersectionNodeIndex],
@@ -3815,25 +3891,37 @@ namespace gh
 						{
 							if(m_roadNodeClusterInRange != m_currentRoadNodeCluster)
 							{
-								//find the index of the roadNodeCluster we are attempting to connect to
-								int intersectionRoadNodeClusterIndex = 0;
-								for(; intersectionRoadNodeClusterIndex < m_roadNodeClusters.size(); ++intersectionRoadNodeClusterIndex)
+								if(m_roadNodeClusterInRange->m_roadNodes[m_intersectionNodeIndex]->GetNumberOfPermanentIncomingNodes() > 0)
 								{
-									if(m_roadNodeClusters[intersectionRoadNodeClusterIndex] == m_roadNodeClusterInRange)
+									m_currentRoadNodeCluster->InitiateNodeConnections(true);
+									RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterInRange,
+										m_intersectionNodeIndex);
+
+									newIntersection->AddIncomingRoadNode(m_tempNodes[m_indexOfLastPermanentNode]);
+								}
+								else
+								{
+									//find the index of the roadNodeCluster we are attempting to connect to
+									int intersectionRoadNodeClusterIndex = 0;
+									for(; intersectionRoadNodeClusterIndex < m_roadNodeClusters.size(); ++intersectionRoadNodeClusterIndex)
 									{
-										break;
+										if(m_roadNodeClusters[intersectionRoadNodeClusterIndex] == m_roadNodeClusterInRange)
+										{
+											break;
+										}
 									}
-								}
 
-								//erase the roadNodeCluster from the list of roadNodeClusters
-								m_roadNodeClusters.erase(m_roadNodeClusters.begin() + intersectionRoadNodeClusterIndex);
+									//erase the roadNodeCluster from the list of roadNodeClusters
+									m_roadNodeClusters.erase(m_roadNodeClusters.begin() + intersectionRoadNodeClusterIndex);
 
-								//add the nodes of the removed road to the current road
-								for(int roadNodeIndex = 0; roadNodeIndex < m_roadNodeClusterInRange->m_roadNodes.size(); ++roadNodeIndex)
-								{
-									m_currentRoadNodeCluster->AddNode(m_roadNodeClusterInRange->m_roadNodes[roadNodeIndex]);
+									//add the nodes of the removed road to the current road
+									for(int roadNodeIndex = 0; roadNodeIndex < m_roadNodeClusterInRange->m_roadNodes.size(); ++roadNodeIndex)
+									{
+										m_currentRoadNodeCluster->AddNode(m_roadNodeClusterInRange->m_roadNodes[roadNodeIndex]);
+									}
+
+									delete m_roadNodeClusterInRange;
 								}
-								delete m_roadNodeClusterInRange;
 							}
 
 							m_currentRoadNodeCluster->InitiateNodeConnections(true);

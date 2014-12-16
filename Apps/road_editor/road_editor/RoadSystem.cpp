@@ -135,4 +135,18 @@ namespace gh
 		m_roads.clear();
 	}
 
+	DrivingLane* RoadSystem::GetLaneWithSpecifiedIndex( int drivingLaneIndex )
+	{
+		std::map< int, DrivingLane* >::iterator laneMappedValue = m_drivingLanes.find( drivingLaneIndex );
+
+		if( laneMappedValue != m_drivingLanes.end() )
+		{
+			return laneMappedValue->second;
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+
 }

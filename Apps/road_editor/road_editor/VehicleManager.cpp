@@ -74,7 +74,7 @@ namespace gh
 		Rgba vehicleColor;
 		FloatRange vehicleVelocityRange( "70~120" );
 
-		for( size_t numberOfLiveVehicles = m_vehicles.size(); numberOfLiveVehicles <= m_desiredVehicles;
+		for( size_t numberOfLiveVehicles = m_vehicles.size(); numberOfLiveVehicles < m_desiredVehicles;
 			++numberOfLiveVehicles )
 		{
 			m_vehicles.push_back( new Vehicle( vehicleVelocityRange.GetRandomValueInRange(), Rgba( RandZeroToOne(), RandZeroToOne(), RandZeroToOne() ) ) );
@@ -85,12 +85,12 @@ namespace gh
 		return vehiclesSpawned;
 	}
 
-	void VehicleManager::renderVehicles( MatrixStack& currentMatrixStack )
+	void VehicleManager::renderVehicles( MatrixStack& currentMatrixStack, float scale )
 	{
 		for( std::vector< Vehicle* >::iterator currentVehicle = m_vehicles.begin();
 			currentVehicle != m_vehicles.end(); ++currentVehicle )
 		{
-			(*currentVehicle)->render( currentMatrixStack );
+			(*currentVehicle)->render( currentMatrixStack, scale );
 		}
 	}
 

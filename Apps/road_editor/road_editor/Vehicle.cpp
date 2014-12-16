@@ -14,8 +14,8 @@
 
 namespace
 {
-	const float vehicleWidth = 20.f;
-	const float vehicleLength = 20.f;
+	const float vehicleWidth = 10.f;
+	const float vehicleLength = 10.f;
 
 	const Vector2 halfVehicleDimensions( vehicleWidth * .5f, vehicleLength * .5f );
 	const AABB2 vehicleRenderQuad( -halfVehicleDimensions, halfVehicleDimensions );
@@ -464,7 +464,7 @@ namespace gh
 		Max_Speed = speed;
 	}
 
-	void Vehicle::render( MatrixStack& currentMatrixStack )
+	void Vehicle::render( MatrixStack& currentMatrixStack, float scale )
 	{
 		currentMatrixStack.PushMatrix();
 		currentMatrixStack.Translate( m_currentLocation );
@@ -487,14 +487,10 @@ namespace gh
 	void Vehicle::placeRandomlyInWorld()
 	{
 		m_currentLane = nullptr;
+		DrivingLane* goalLane = nullptr;
+		m_roadPath = nullptr;
 
-		while (m_currentLane == nullptr
-			|| m_currentLane->placeVehicleRandomly(this) )
-		{
-			m_currentLane = m_roadSystem->getRandomLane();
-		}
-
-		/*do{
+		do{
 			m_currentLane = m_roadSystem->getRandomLane();
 			assert( m_currentLane );
 			
@@ -504,9 +500,9 @@ namespace gh
 				continue;
 			}
 
-			//start it trying to path to lane5_2_1
-			m_roadPath = m_roadSystem->calculatePathTo( "lane5_2_1", 1.f, m_currentLane );
-		}while( m_roadPath == nullptr || m_roadPath->peekNextLaneInPath() == nullptr );*/
+			goalLane = m_roadSystem->getRandomLane();
+			m_roadPath = m_roadSystem->calculatePathTo(goalLane->getID(), 1.f, m_currentLane);
+		}while( m_roadPath == nullptr || m_roadPath->peekNextLaneInPath() == nullptr );
 	}
 
 	DrivingSegment* Vehicle::getCurrentLane()

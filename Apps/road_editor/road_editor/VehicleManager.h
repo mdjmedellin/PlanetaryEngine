@@ -26,7 +26,7 @@ namespace gh
 		~VehicleManager();
 
 		void updateVehicles( double deltaTime );
-		void renderVehicles( MatrixStack& currentMatrixStack );
+		void renderVehicles( MatrixStack& currentMatrixStack, float scale );
 
 	private:
 		int removeVehiclesThatReachedTheirDestination();
