@@ -77,7 +77,7 @@ namespace gh
 		float Max_Speed;
 		Vehicle* m_vehicleInFrontOfMe;
 		Rgba m_color;
-		//int id;
+		int m_goalLaneID;
 		bool m_isQueued;
 		RoadPath* m_roadPath;
 		bool m_dirty;

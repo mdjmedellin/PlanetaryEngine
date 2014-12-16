@@ -33,7 +33,7 @@ namespace gh
 	public:
 		RoadSystem();
 		~RoadSystem();
-		RoadPath* calculatePathTo( const std::string& endLaneIdentifier, float splineLocation, DrivingSegment* startingDrivingLane );
+		RoadPath* calculatePathTo( int endLaneIdentifier, float splineLocation, DrivingSegment* startingDrivingLane );
 		void render( MatrixStack& currentMatrixStack );
 		DrivingLane* getRandomLane();
 		void addRoad( Road* roadAdded );
@@ -42,7 +42,7 @@ namespace gh
 
 	private:
 		std::vector< Road* > m_roads;
-		std::map< const std::string, DrivingLane* > m_drivingLanes;
+		std::map< int, DrivingLane* > m_drivingLanes;
 		std::vector< Intersection* > m_intersections;
 	};
 	//===============================================================================================================================

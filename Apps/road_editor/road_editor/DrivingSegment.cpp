@@ -139,9 +139,9 @@ namespace gh
 		return nullptr;
 	}
 
-	std::string DrivingSegment::getID()
+	int DrivingSegment::getID()
 	{
-		return "0";
+		return -1;
 	}
 
 	Vehicle* DrivingSegment::getVehicleInFrontOf( Vehicle* vehicleOnBack, float startingPoint )

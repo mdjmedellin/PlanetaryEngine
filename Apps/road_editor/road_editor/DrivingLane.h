@@ -28,13 +28,13 @@ namespace gh
 	class DrivingLane : public DrivingSegment
 	{
 	public:
-		DrivingLane( const std::string& nameID );
+		DrivingLane( int id );
 		void pushLaneNode( LaneNode* newLaneNode );
 		void getLastTwoLaneNodes( LaneNode*& out_penultimateLaneNode, LaneNode*& out_lastLaneNode );
 		void getFirstTwoLaneNodes( LaneNode*& out_firstLaneNode, LaneNode*& out_secondLaneNode );
 		void setParentRoad( Road* parentRoad );
 		void setConnectingLane( DrivingLane* connectingLane );
-		virtual std::string getID();
+		virtual int getID();
 		virtual bool placeVehicleRandomly( Vehicle* vehicleToPlace );
 		virtual bool placeVehicleAtSpecifiedLength( Vehicle* vehicleToPlace );
 		virtual Intersection* getEndIntersection();
@@ -43,7 +43,7 @@ namespace gh
 		Intersection* m_intersection;
 
 	private:
-		std::string m_nameID;
+		int m_id;
 		Road* m_parentRoad;
 		std::vector< LaneNode* > m_laneNodes;
 		std::vector< DrivingLane* > m_connectingLanes;

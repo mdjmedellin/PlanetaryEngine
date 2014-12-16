@@ -12,10 +12,10 @@
 
 namespace gh
 {
-	DrivingLane::DrivingLane( const std::string& nameID )
+	DrivingLane::DrivingLane( int id )
 		:	DrivingSegment()
 		,	m_laneNodes( std::vector< LaneNode* >() )
-		,	m_nameID( nameID )
+		,	m_id( id )
 		,	m_intersection( nullptr )
 	{}
 
@@ -59,9 +59,9 @@ namespace gh
 	}
 
 	//debug function
-	std::string DrivingLane::getID()
+	int DrivingLane::getID()
 	{
-		return m_nameID;
+		return m_id;
 	}
 
 	bool DrivingLane::placeVehicleRandomly( Vehicle* vehicleToPlace )

@@ -59,10 +59,10 @@ namespace gh
 		}
 	}
 
-	RoadPath* RoadSystem::calculatePathTo( const std::string& drivingLaneID, float splineLocation, DrivingSegment* startingDrivingLane )
+	RoadPath* RoadSystem::calculatePathTo( int drivingLaneID, float splineLocation, DrivingSegment* startingDrivingLane )
 	{
 		//find the lane we are trying to get to
-		std::map< const std::string, DrivingLane* >::iterator endLaneMappedValue = m_drivingLanes.find( drivingLaneID );
+		std::map< int, DrivingLane* >::iterator endLaneMappedValue = m_drivingLanes.find( drivingLaneID );
 
 		if( endLaneMappedValue != m_drivingLanes.end() )
 		{

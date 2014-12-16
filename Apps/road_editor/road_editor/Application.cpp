@@ -22,7 +22,7 @@
 
 namespace
 {
-	const int MAX_CAR_NUMBER = 24;
+	const int MAX_CAR_NUMBER = 1;
 	const float SIZE_OF_POINTS = 10.f;
 
 	//helper functions
@@ -73,6 +73,7 @@ namespace
 	bool g_renderIntersections = true;
 	bool g_renderRoadNodeClusters = true;
 	bool g_renderTempNodes = true;
+	bool g_editMode = true;
 }
 
 namespace gh
@@ -907,7 +908,7 @@ namespace gh
 	{
 		m_roadSystem = new RoadSystem();
 
-		Road* road1 = new Road();
+		/*Road* road1 = new Road();
 		
 		LaneCluster* cluster1_1 = new LaneCluster();
 		DrivingLane* lane1_1_1 = new DrivingLane( "lane1_1_1" );
@@ -1794,7 +1795,79 @@ namespace gh
 		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
 		synchronizedLanes.clear();
 
+		m_roadSystem->addIntersection( intersectionCollection );*/
+	}
+
+	void Application::InitiateRoadSystemFromCurrentRoads()
+	{
+		if(m_roadSystem != nullptr)
+		{
+			return;
+		}
+
+		m_roadSystem = new RoadSystem();
+
+		RoadNodeCluster* currentRoadCluster;
+		for(int roadNodeClusterIndex = 0; roadNodeClusterIndex < m_roadNodeClusters.size(); ++roadNodeClusterIndex)
+		{
+			currentRoadCluster = m_roadNodeClusters[roadNodeClusterIndex];
+			//the road system used by the AI makes use of roads
+			//which are made up of lane clusters
+			//A lane cluster is a cluster of driving lanes going in the same direction
+			//A driving lane is composed of LaneNodes
+			Road* currentRoad = new Road();
+			LaneCluster* currentLaneCluster = new LaneCluster();
+			DrivingLane* currentLane = new DrivingLane(roadNodeClusterIndex);
+
+			LaneNode* currentLaneNode = nullptr;
+			RoadNode* currentRoadNode = nullptr;
+			for(int roadNodeIndex = 0; roadNodeIndex < currentRoadCluster->m_roadNodes.size(); ++roadNodeIndex)
+			{
+				currentRoadNode = currentRoadCluster->m_roadNodes[roadNodeIndex];
+
+				currentLaneNode = new LaneNode();
+				currentLaneNode->m_position = currentRoadNode->m_location;
+
+				currentLane->pushLaneNode(currentLaneNode);
+			}
+
+			currentLaneCluster->pushDrivingLane(currentLane);
+			currentRoad->pushLaneCluster(currentLaneCluster);
+
+			m_roadSystem->addRoad(currentRoad);
+		}
+
+		std::vector< IntersectionConnection* > synchronizedLanes;
+
+		/*//add the intersection between the roads
+		IntersectionConnection* testIntersection = new IntersectionConnection( lane6_2_1, lane1_1_1 );
+		synchronizedLanes.push_back( testIntersection );
+		Intersection* intersectionCollection = new Intersection();
+		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
+		synchronizedLanes.clear();
+
+		testIntersection = new IntersectionConnection( lane1_2_1, lane6_1_1 );
+		synchronizedLanes.push_back( testIntersection );
+		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
+		synchronizedLanes.clear();
+
+		//add the intersection collection to the roadSystem
 		m_roadSystem->addIntersection( intersectionCollection );
+		intersectionCollection = new Intersection();
+
+		testIntersection = new IntersectionConnection( lane4_2_1, lane3_1_1 );
+		synchronizedLanes.push_back( testIntersection );
+		testIntersection = new IntersectionConnection( lane3_2_1, lane2_2_1 );
+		synchronizedLanes.push_back(testIntersection);
+		testIntersection = new IntersectionConnection( lane2_1_1, lane1_2_1 );
+		synchronizedLanes.push_back(testIntersection);
+		testIntersection = new IntersectionConnection( lane1_1_1, lane4_1_1);
+		synchronizedLanes.push_back(testIntersection);
+		intersectionCollection->addIntersectionConnections( synchronizedLanes, ALWAYS_STOP );
+		synchronizedLanes.clear();
+
+		m_roadSystem->addIntersection( intersectionCollection );
+		intersectionCollection = new Intersection();*/
 	}
 
 	void Application::drawOrigin( float lineLength )
@@ -1917,18 +1990,28 @@ namespace gh
 			}
 
 			//update the roads and vehicles
-			if(m_roadSystem)
-			m_roadSystem->update( deltaTime );
+			if(!g_editMode)
+			{
+				if(m_roadSystem)
+				{
+					m_roadSystem->update( deltaTime );
+				}
 
-			if(m_vehicleManager)
-			m_vehicleManager->updateVehicles( deltaTime );
+				if(m_vehicleManager)
+				{
+					m_vehicleManager->updateVehicles( deltaTime );
+				}
+			}
 		}
 
 		//update the cursor position
 		UpdateCursorPosition();
 
 		//update the spline
-		CalculateSplineToMousePos();
+		if(g_editMode)
+		{
+			CalculateSplineToMousePos();
+		}
 
 		m_matrixStack.PushMatrix();
 		theRenderer.useRegularFBO( m_backgroundColor.getVector4(), CLEAR_COLOR | CLEAR_DEPTH );
@@ -1993,14 +2076,19 @@ namespace gh
 		glDisable( GL_DEPTH_TEST );
 		glDisable( GL_TEXTURE_2D );
 
-		if(m_roadSystem)
-		m_roadSystem->render( m_matrixStack );
+		if(!g_editMode)
+		{
+			if(m_roadSystem)
+			m_roadSystem->render( m_matrixStack );
 		
-		if(m_vehicleManager)
-		m_vehicleManager->renderVehicles( m_matrixStack );
-
-		RenderSplines();
-		RenderDebugNodes();
+			if(m_vehicleManager)
+			m_vehicleManager->renderVehicles( m_matrixStack );
+		}
+		else
+		{
+			RenderSplines();
+			RenderDebugNodes();
+		}
 
 		glEnable( GL_TEXTURE_2D );
 		m_matrixStack.PopMatrix();
@@ -3453,6 +3541,16 @@ namespace gh
 					}
 					break;
 
+				case 'b':
+				case 'B':
+					if(m_splineMode)
+					{
+						ExitSplineMode();
+					}
+					InitiateRoadSystemFromCurrentRoads();
+					g_editMode = !g_editMode;
+					break;
+
 				case 'j':
 				case 'J':
 					m_maxYawRotationDegreesForRoadSegments += 1.f;
@@ -3528,8 +3626,11 @@ namespace gh
 
 	void Application::initiateDrivingSystem()
 	{
-		initiateRoadSystem();
-		m_vehicleManager = new VehicleManager( m_roadSystem, MAX_CAR_NUMBER );
+		InitiateRoadSystemFromCurrentRoads();
+		m_vehicleManager = new VehicleManager(m_roadSystem, MAX_CAR_NUMBER);
+
+		//initiateRoadSystem();
+		//m_vehicleManager = new VehicleManager( m_roadSystem, MAX_CAR_NUMBER );
 
 		/*Rgba vehicleColor;
 

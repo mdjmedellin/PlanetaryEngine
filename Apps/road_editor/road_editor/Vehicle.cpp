@@ -31,6 +31,11 @@ namespace gh
 
 	void Vehicle::updateLocation( double deltaTime )
 	{
+		if(m_goalLaneID < 0)
+		{
+			return;
+		}
+
 		float distanceToAdvance = m_speed * float( deltaTime ) + ( .5f * m_acceleration * float( deltaTime * deltaTime ) );
 
 		//advance the vehicle along the spline
@@ -77,14 +82,14 @@ namespace gh
 		if( !m_roadPath->peekNextLaneInPath() )
 		{
 			
-			if( m_currentLane->getID() == "lane5_2_1" )
+			if( m_currentLane->getID() == m_goalLaneID )
 			{
 				bReachedDestination = true;
 				//m_roadPath = m_roadSystem->calculatePathTo( "lane1_1_1", 0.f, m_currentLane );
 			}
 			else
 			{
-				m_roadPath = m_roadSystem->calculatePathTo( "lane5_2_1", 0.f, m_currentLane );
+				m_roadPath = m_roadSystem->calculatePathTo( m_goalLaneID, 0.f, m_currentLane );
 			}
 
 			m_nextIntersection = m_currentLane->getEndIntersection();
@@ -481,7 +486,15 @@ namespace gh
 
 	void Vehicle::placeRandomlyInWorld()
 	{
-		do{
+		m_currentLane = nullptr;
+
+		while (m_currentLane == nullptr
+			|| m_currentLane->placeVehicleRandomly(this) )
+		{
+			m_currentLane = m_roadSystem->getRandomLane();
+		}
+
+		/*do{
 			m_currentLane = m_roadSystem->getRandomLane();
 			assert( m_currentLane );
 			
@@ -493,7 +506,7 @@ namespace gh
 
 			//start it trying to path to lane5_2_1
 			m_roadPath = m_roadSystem->calculatePathTo( "lane5_2_1", 1.f, m_currentLane );
-		}while( m_roadPath == nullptr || m_roadPath->peekNextLaneInPath() == nullptr );
+		}while( m_roadPath == nullptr || m_roadPath->peekNextLaneInPath() == nullptr );*/
 	}
 
 	DrivingSegment* Vehicle::getCurrentLane()

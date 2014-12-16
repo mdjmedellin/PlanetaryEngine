@@ -223,6 +223,7 @@ namespace gh
 		RoadNodeIntersection* ConvertNodeToIntersection(RoadNodeCluster* intersectionRoadNodeCluster, int intersectionNodeIndex);
 		bool AddRoad(RoadNodeCluster* roadToAdd);
 		void AddCurrentRoadToIntersection(RoadNode* intersection);
+		void InitiateRoadSystemFromCurrentRoads();
 
 
 		HWND m_hWnd;

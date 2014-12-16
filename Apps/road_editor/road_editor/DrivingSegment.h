@@ -41,7 +41,7 @@ namespace gh
 		virtual Vector3 getEndLocation() const;
 		virtual float getLength();
 		virtual Intersection* getEndIntersection();
-		virtual std::string getID();
+		virtual int getID();
 
 		bool m_dirty;
 
