@@ -80,10 +80,11 @@ namespace gh
 		}
 
 		void SetLocation(const Vector3& newLocation);
-		void AddPreviousNode(RoadNode* nodeToAdd);
+		void AddPreviousNode(RoadNode* nodeToAdd, bool isPermanentlyAdded = false);
 		void RemoveNextNode(RoadNode* nodeToRemove);
 		void AddNextNode(RoadNode* nodeToAdd, bool isPermanentlyAdded = false);
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
+		virtual int GetNumberOfPermanentOutgoingNodes();
 		virtual Vector3 GetTangentOfNode();
 		virtual RotationDirection GetBestPossibleDirectionToBranch( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
 			const Matrix4X4& maxCCWTransformationMatrix );

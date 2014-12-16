@@ -153,8 +153,48 @@ namespace gh
 		m_nextNodes.push_back(nodeToAdd);
 	}
 
-	void RoadNode::AddPreviousNode(RoadNode* nodeToAdd)
+	void RoadNode::AddPreviousNode(RoadNode* nodeToAdd, bool isPermanentlyAdded)
 	{
+		if( isPermanentlyAdded )
+		{
+			//check if the node is already on the list
+			bool nodeIsPresent = false;
+			for(int i = 0; i < Rotate_COUNT; ++i)
+			{
+				if(m_previousNodesDirection[i] == nodeToAdd)
+				{
+					nodeIsPresent = true;
+					break;
+				}
+			}
+
+			if(!nodeIsPresent)
+			{
+				if(m_previousNodes.empty()
+					|| m_previousNodesDirection[Rotate_NONE] == nullptr)
+				{
+					m_previousNodesDirection[Rotate_NONE] = nodeToAdd;
+				}
+				else
+				{
+					Matrix4X4 turn90CW = Matrix4X4::RotateZDegreesMatrix(-90);
+					Vector3 currentDirection = nodeToAdd->m_location - m_location;
+					Vector3 defaultDirection = -GetTangentOfNode();
+					Vector3 defaultDirectionRotated90DegreeCW = turn90CW.TransformDirection(defaultDirection);
+
+					float dotProductResult = defaultDirectionRotated90DegreeCW.DotProduct(currentDirection);
+					if(dotProductResult > 0.f)
+					{
+						m_previousNodesDirection[Rotate_CW] = nodeToAdd;
+					}
+					else
+					{
+						m_previousNodesDirection[Rotate_CCW] = nodeToAdd;
+					}
+				}
+			}
+		}
+
 		//check that the node is not in our list
 		for(int i = 0; i < m_previousNodes.size(); ++i)
 		{
@@ -205,7 +245,7 @@ namespace gh
 			}
 		}
 
-		nodeToAdd->AddPreviousNode(this);
+		nodeToAdd->AddPreviousNode(this, true);
 	}
 
 	void RoadNode::ReplacePreviousNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd)
@@ -322,6 +362,21 @@ namespace gh
 		return bestPossibleDirection;
 	}
 
+	int RoadNode::GetNumberOfPermanentOutgoingNodes()
+	{
+		int numberOfPermanentOutgoingNodes = 0;
+
+		for(int i = 0; i < Rotate_COUNT; ++i)
+		{
+			if(m_nextNodesDirection[i] != nullptr)
+			{
+				++numberOfPermanentOutgoingNodes;
+			}
+		}
+
+		return numberOfPermanentOutgoingNodes;
+	}
+
 	//TODO:
 	//Intersections should not have a null incoming, nor a null outgoing node
 	void RoadNodeIntersection::Render( MatrixStack& matrixStack, const Vector3& nodeColor /*= Vector3(1.f, 1.f, 1.f)*/, float sizeMultiplier )
@@ -374,7 +429,7 @@ namespace gh
 	void RoadNodeIntersection::AddIncomingRoadNode(RoadNode* incomingRoadNode)
 	{
 		m_intersectionConnectionsMap[incomingRoadNode] = m_nextNodes;
-		m_previousNodes.push_back(incomingRoadNode);
+		AddPreviousNode(incomingRoadNode, true);
 	}
 
 	void RoadNodeIntersection::AddOutgoingRoadNode(RoadNode* outgoingRoadNode)
@@ -385,6 +440,7 @@ namespace gh
 		}
 
 		AddNextNode(outgoingRoadNode, true);
+		outgoingRoadNode->AddPreviousNode(this, true);
 	}
 
 	bool RoadNodeIntersection::AllowsForOutgoingNodes()
@@ -559,7 +615,7 @@ namespace gh
 				prevNode->AddNextNode(m_roadNodes[nodeIndex], isPermanentlyAdded);
 			}
 
-			m_roadNodes[nodeIndex]->AddPreviousNode(prevNode);
+			m_roadNodes[nodeIndex]->AddPreviousNode(prevNode, isPermanentlyAdded);
 			prevNode = m_roadNodes[nodeIndex];
 		}
 	}
@@ -2455,7 +2511,46 @@ namespace gh
 			--maxIterations;
 		}
 
-		if(maxIterations <= 0)
+		bool buildRoadNodeCluster = true;
+
+		if(!tempStartNodes.empty()
+			&& !tempEndNodeContainer.empty())
+		{
+			Vector3 distanceVectorLastStartNodeToLastEndNode = 
+				tempEndNodeContainer.back()->m_location - tempStartNodes.back()->m_location;
+
+			Vector3 directionLastStartNodetoLastEndNode = distanceVectorLastStartNodeToLastEndNode;
+			float distanceBetweenLastStartNodeAndLastEndNode = directionLastStartNodetoLastEndNode.normalize();
+
+			if(directionLastStartNodetoLastEndNode.DotProduct(currentStartDirection) < 0.f)
+			{
+				buildRoadNodeCluster = false;
+			}
+			else
+			{
+				int nodesToAdd = ceilf(distanceBetweenLastStartNodeAndLastEndNode / m_lengthOfFragment);
+				nodesToAdd -= 1;
+
+				float lengthOfNodesAccumulated = nodesToAdd * m_lengthOfFragment;
+				float remainingLength = distanceBetweenLastStartNodeAndLastEndNode - lengthOfNodesAccumulated;
+
+				if(remainingLength < (m_lengthOfFragment * .5f) )
+				{
+					nodesToAdd -= 1;
+				}
+
+				Vector3 currentLocation = tempStartNodes.back()->m_location;
+				for(int i = 0; i < nodesToAdd; ++i)
+				{
+					tempStartNodes.push_back( new RoadNode() );
+					tempStartNodes.back()->SetLocation( currentLocation + (directionLastStartNodetoLastEndNode * m_lengthOfFragment) );
+					currentLocation = tempStartNodes.back()->m_location;
+				}
+			}
+		}
+
+		if(maxIterations <= 0
+			|| !buildRoadNodeCluster)
 		{
 			for(int i = 0; i < tempEndNodeContainer.size(); ++i)
 			{
@@ -2913,7 +3008,14 @@ namespace gh
 		}
 		else
 		{
-			nodesAdded = BranchRoadFromSpecifiedNodeTowardsGoalLocation(startNode, goalLocation, indexOfNextTempNode);
+			if(startNode->GetNumberOfPermanentOutgoingNodes() == 0)
+			{
+				nodesAdded = ConstructBestPossibleRoad(startNode, goalLocation, indexOfNextTempNode);
+			}
+			else
+			{
+				nodesAdded = BranchRoadFromSpecifiedNodeTowardsGoalLocation(startNode, goalLocation, indexOfNextTempNode);
+			}
 		}
 
 		return nodesAdded;
@@ -3429,7 +3531,8 @@ namespace gh
 	{
 		if(m_currentRoadNodeCluster)
 		{
-			intersection->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back());
+			intersection->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back(), true);
+			m_currentRoadNodeCluster->m_roadNodes.back()->AddNextNode(intersection, true);
 		}
 	}
 
@@ -3499,7 +3602,7 @@ namespace gh
 							}
 
 							m_currentRoadNodeCluster->InitiateNodeConnections(true);
-							m_currentRoadNodeCluster->m_roadNodes[0]->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back());
+							m_currentRoadNodeCluster->m_roadNodes[0]->AddPreviousNode(m_currentRoadNodeCluster->m_roadNodes.back(), true);
 
 							if(m_roadNodeClusterInRange == m_currentRoadNodeCluster)
 							{
@@ -3508,8 +3611,10 @@ namespace gh
 						}
 						else
 						{
+							m_currentRoadNodeCluster->InitiateNodeConnections(true);
 							RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterInRange,
 								m_intersectionNodeIndex);
+							m_currentRoadNodeCluster->m_roadNodes.clear();
 							newIntersection->AddIncomingRoadNode(m_tempNodes[m_indexOfLastPermanentNode]);
 						}
 
