@@ -2048,19 +2048,19 @@ namespace gh
 			{
 				m_scale = 0.f;
 			}
+		}
 
-			//update the roads and vehicles
-			if(!g_editMode)
+		//update the roads and vehicles
+		if(!g_editMode)
+		{
+			if(m_roadSystem)
 			{
-				if(m_roadSystem)
-				{
-					m_roadSystem->update( deltaTime );
-				}
+				m_roadSystem->update( deltaTime );
+			}
 
-				if(m_vehicleManager)
-				{
-					m_vehicleManager->updateVehicles( deltaTime );
-				}
+			if(m_vehicleManager)
+			{
+				m_vehicleManager->updateVehicles( deltaTime );
 			}
 		}
 

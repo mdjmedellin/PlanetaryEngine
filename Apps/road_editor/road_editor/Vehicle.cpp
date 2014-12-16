@@ -503,6 +503,8 @@ namespace gh
 			goalLane = m_roadSystem->getRandomLane();
 			m_roadPath = m_roadSystem->calculatePathTo(goalLane->getID(), 1.f, m_currentLane);
 		}while( m_roadPath == nullptr || m_roadPath->peekNextLaneInPath() == nullptr );
+
+		m_goalLaneID = goalLane->getID();
 	}
 
 	DrivingSegment* Vehicle::getCurrentLane()
