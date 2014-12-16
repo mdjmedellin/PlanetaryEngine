@@ -34,6 +34,13 @@ namespace gh
 		Rotate_COUNT
 	};
 
+	enum RoadNodeType
+	{
+		RoadNode_REGULAR,
+		RoadNode_INTERSECTION,
+		RoadNode_COUNT
+	};
+
 	struct NodeInformation
 	{
 		Vector3 location;
@@ -44,6 +51,7 @@ namespace gh
 	{
 		RoadNode(Vector3& location)
 			:	m_location(location)
+			,	m_nodeType(RoadNode_REGULAR)
 		{
 			for(int i = 0; i < Rotate_COUNT; ++i)
 			{
@@ -54,6 +62,7 @@ namespace gh
 
 		RoadNode()
 			:	m_location(Vector3())
+			,	m_nodeType(RoadNode_REGULAR)
 		{
 			for(int i = 0; i < Rotate_COUNT; ++i)
 			{
@@ -77,6 +86,7 @@ namespace gh
 			m_previousNodes = nodeToCopy->m_previousNodes;
 			m_isValid = nodeToCopy->m_isValid;
 			m_location = nodeToCopy->m_location;
+			m_nodeType = RoadNode_REGULAR;
 		}
 
 		void SetLocation(const Vector3& newLocation);
@@ -86,18 +96,23 @@ namespace gh
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
 		virtual int GetNumberOfPermanentOutgoingNodes();
 		virtual Vector3 GetTangentOfNode();
+		virtual Vector3 GetBackTangentOfNode();
 		virtual RotationDirection GetBestPossibleDirectionToBranch( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
 			const Matrix4X4& maxCCWTransformationMatrix );
 		virtual RotationDirection GetBestPossibleDirectionToMerge( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
 			const Matrix4X4& maxCCWTransformationMatrix );
+		virtual bool AllowsForks();
+		virtual bool AllowsMerging();
 		void ReplaceNextNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd);
 		void ReplacePreviousNodeWithSpecifiedNode(RoadNode* nodeToRemove, RoadNode* nodeToAdd);
+		
 		Vector3 m_location;
 		std::vector< RoadNode* > m_previousNodes;
 		std::vector< RoadNode* > m_nextNodes;
 		bool m_isValid;
 		RoadNode* m_nextNodesDirection[Rotate_COUNT];
 		RoadNode* m_previousNodesDirection[Rotate_COUNT];
+		RoadNodeType m_nodeType;
 	};
 
 	struct RoadNodeCluster
@@ -122,9 +137,13 @@ namespace gh
 			{
 				m_intersectionConnectionsMap[m_previousNodes[prevNodeIndex]] = m_nextNodes;
 			}
+
+			m_nodeType = RoadNode_INTERSECTION;
 		};
 
 		virtual void Render(MatrixStack& matrixStack, const Vector3& nodeColor = Vector3(1.f, 1.f, 1.f), float sizeMultiplier = 1.f);
+		virtual bool AllowsForks();
+		virtual bool AllowsMerging();
 		void AddIncomingRoadNode(RoadNode* incomingRoadNode);
 		void AddOutgoingRoadNode(RoadNode* outgoingRoadNode);
 		void GetDirectionOfBranchingSegments(std::vector<Vector3>& out_directionSegments);

@@ -291,6 +291,26 @@ namespace gh
 		return tangent;
 	}
 
+	Vector3 RoadNode::GetBackTangentOfNode()
+	{
+		Vector3 tangent;
+
+		if( !m_previousNodes.empty()
+			&& m_previousNodes[0] != nullptr 
+			&& m_previousNodes[0]->m_isValid)
+		{
+			tangent = m_previousNodes[0]->m_location - m_location;
+		}
+		else if( !m_nextNodes.empty() 
+			&& m_nextNodes[0] != nullptr
+			&& m_nextNodes[0]->m_isValid)
+		{
+			tangent = m_location - m_nextNodes[0]->m_location;
+		}
+
+		return tangent;
+	}
+
 	RotationDirection RoadNode::GetBestPossibleDirectionToBranch( const Vector3& goalLocation, const Matrix4X4& maxCWTransformationMatrix,
 		const Matrix4X4& maxCCWTransformationMatrix )
 	{
@@ -375,6 +395,97 @@ namespace gh
 		}
 
 		return numberOfPermanentOutgoingNodes;
+	}
+
+	bool RoadNode::AllowsForks()
+	{
+		//we can only fork if we do not have intersections within 2 nodes before us
+		//and 2 nodes after us
+
+		bool allowsForks = true;
+
+		RoadNode* currentPreviousNode = this;
+		for(int i = 0; i < 2; ++i)
+		{
+			currentPreviousNode = currentPreviousNode->m_previousNodesDirection[Rotate_NONE];
+
+			if(currentPreviousNode == nullptr)
+			{
+				break;
+			}
+			else if(currentPreviousNode->m_nodeType == RoadNode_INTERSECTION)
+			{
+				allowsForks = false;
+				break;
+			}
+		}
+
+		if(allowsForks)
+		{
+			RoadNode* currentNextNode = this;
+			for(int i = 0; i < 2; ++i)
+			{
+				currentNextNode = currentNextNode->m_nextNodesDirection[Rotate_NONE];
+
+				if(currentNextNode == nullptr)
+				{
+					break;
+				}
+				else if(currentNextNode->m_nodeType == RoadNode_INTERSECTION)
+				{
+					allowsForks = false;
+					break;
+				}
+			}
+		}
+
+		return allowsForks;
+
+	}
+
+	bool RoadNode::AllowsMerging()
+	{
+		//we can only merge if we do not have intersections within 2 nodes before us
+		//and 2 nodes after us
+
+		bool allowsMerging = true;
+
+		RoadNode* currentPreviousNode = this;
+		for(int i = 0; i < 2; ++i)
+		{
+			currentPreviousNode = currentPreviousNode->m_previousNodesDirection[Rotate_NONE];
+
+			if(currentPreviousNode == nullptr)
+			{
+				break;
+			}
+			else if(currentPreviousNode->m_nodeType == RoadNode_INTERSECTION)
+			{
+				allowsMerging = false;
+				break;
+			}
+		}
+
+		if(allowsMerging)
+		{
+			RoadNode* currentNextNode = this;
+			for(int i = 0; i < 2; ++i)
+			{
+				currentNextNode = currentNextNode->m_nextNodesDirection[Rotate_NONE];
+
+				if(currentNextNode == nullptr)
+				{
+					break;
+				}
+				else if(currentNextNode->m_nodeType == RoadNode_INTERSECTION)
+				{
+					allowsMerging = false;
+					break;
+				}
+			}
+		}
+
+		return allowsMerging;
 	}
 
 	//TODO:
@@ -472,6 +583,16 @@ namespace gh
 		//the first connecting road is the one that specifies the default firection of the intersection
 		Vector3 defaultDirectionOfIntersection = m_location - m_previousNodes[0]->m_location;
 		return defaultDirectionOfIntersection;
+	}
+
+	bool RoadNodeIntersection::AllowsForks()
+	{
+		return true;
+	}
+
+	bool RoadNodeIntersection::AllowsMerging()
+	{
+		return true;
 	}
 
 	void RoadNodeCluster::AddNode(RoadNode* nodeToAdd)
@@ -2276,7 +2397,7 @@ namespace gh
 		}
 
 		Vector3 endTangent;
-		endTangent = m_roadNodeInRange->GetTangentOfNode();
+		endTangent = m_roadNodeInRange->GetBackTangentOfNode();
 
 		startTangent.normalize();
 		endTangent.normalize();
@@ -2373,7 +2494,7 @@ namespace gh
 			m_roadMaxCWRotationTransformationMatrix, m_roadMaxCCWRotationTransformationMatrix);
 
 		//see which of the directions is closest to the one we are facing
-		defaultDirectionOfIntersection = -endDirection;
+		defaultDirectionOfIntersection = endDirection;
 		closestDirection = defaultDirectionOfIntersection;
 
 		switch(bestDirectionToRotateEndNode)
@@ -2390,7 +2511,7 @@ namespace gh
 
 		float distanceBetweenStartAndGoalSquared = distanceVector.calculateRadialDistanceSquared();
 
-		Vector3 currentEndDirection = -endDirection;
+		Vector3 currentEndDirection = endDirection;
 		std::vector< RoadNode* > tempEndNodeContainer;
 
 		if( closestDirection.DotProduct( -normalizedDirectionStartToEnd ) < m_maxTurnAngleDotProductForRoadSegments )
@@ -2512,40 +2633,52 @@ namespace gh
 		}
 
 		bool buildRoadNodeCluster = true;
+		Vector3 distanceVectorLastStartNodeToLastEndNode;
 
-		if(!tempStartNodes.empty()
-			&& !tempEndNodeContainer.empty())
+		if(!tempEndNodeContainer.empty())
 		{
-			Vector3 distanceVectorLastStartNodeToLastEndNode = 
-				tempEndNodeContainer.back()->m_location - tempStartNodes.back()->m_location;
+			distanceVectorLastStartNodeToLastEndNode = tempEndNodeContainer.back()->m_location;
+		}
+		else
+		{
+			distanceVectorLastStartNodeToLastEndNode = endLocation;
+		}
 
-			Vector3 directionLastStartNodetoLastEndNode = distanceVectorLastStartNodeToLastEndNode;
-			float distanceBetweenLastStartNodeAndLastEndNode = directionLastStartNodetoLastEndNode.normalize();
+		if(!tempStartNodes.empty())
+		{
+			distanceVectorLastStartNodeToLastEndNode -= tempStartNodes.back()->m_location;
+		}
+		else
+		{
+			distanceVectorLastStartNodeToLastEndNode -= startLocation;
+		}
 
-			if(directionLastStartNodetoLastEndNode.DotProduct(currentStartDirection) < 0.f)
+		Vector3 directionLastStartNodetoLastEndNode = distanceVectorLastStartNodeToLastEndNode;
+		float distanceBetweenLastStartNodeAndLastEndNode = directionLastStartNodetoLastEndNode.normalize();
+
+		if(directionLastStartNodetoLastEndNode.DotProduct(currentStartDirection) < 0.f)
+		{
+			buildRoadNodeCluster = false;
+		}
+		else
+		{
+			int nodesToAdd = ceilf(distanceBetweenLastStartNodeAndLastEndNode / m_lengthOfFragment);
+			nodesToAdd -= 1;
+
+			float lengthOfNodesAccumulated = nodesToAdd * m_lengthOfFragment;
+			float remainingLength = distanceBetweenLastStartNodeAndLastEndNode - lengthOfNodesAccumulated;
+
+			if(remainingLength < (m_lengthOfFragment * .5f) )
 			{
-				buildRoadNodeCluster = false;
-			}
-			else
-			{
-				int nodesToAdd = ceilf(distanceBetweenLastStartNodeAndLastEndNode / m_lengthOfFragment);
 				nodesToAdd -= 1;
+			}
 
-				float lengthOfNodesAccumulated = nodesToAdd * m_lengthOfFragment;
-				float remainingLength = distanceBetweenLastStartNodeAndLastEndNode - lengthOfNodesAccumulated;
-
-				if(remainingLength < (m_lengthOfFragment * .5f) )
-				{
-					nodesToAdd -= 1;
-				}
-
-				Vector3 currentLocation = tempStartNodes.back()->m_location;
-				for(int i = 0; i < nodesToAdd; ++i)
-				{
-					tempStartNodes.push_back( new RoadNode() );
-					tempStartNodes.back()->SetLocation( currentLocation + (directionLastStartNodetoLastEndNode * m_lengthOfFragment) );
-					currentLocation = tempStartNodes.back()->m_location;
-				}
+			Vector3 currentLocation = tempStartNodes.back()->m_location;
+			for(int i = 0; i < nodesToAdd; ++i)
+			{
+				tempStartNodes.push_back( new RoadNode() );
+				tempStartNodes.back()->SetLocation( currentLocation + (directionLastStartNodetoLastEndNode * m_lengthOfFragment) );
+				currentLocation = tempStartNodes.back()->m_location;
 			}
 		}
 
@@ -3048,7 +3181,8 @@ namespace gh
 					m_roadNodeInRange = m_intersectionNodeInRange;
 				}
 
-				if(m_roadNodeInRange)
+				if(m_roadNodeInRange
+					&& m_roadNodeInRange->AllowsMerging())
 				{
 					nodesAdded = CalculateIntersectionConnection(mouseWorldPos);
 				}
@@ -3612,9 +3746,21 @@ namespace gh
 						else
 						{
 							m_currentRoadNodeCluster->InitiateNodeConnections(true);
+							
+							bool deleteCurrentRoadNodeCluster = false;
+							if(m_currentRoadNodeCluster == m_roadNodeClusterInRange)
+							{
+								//we are going to merge with ourselves
+								//therefore we do not need to add current roadNode cluster
+								deleteCurrentRoadNodeCluster = true;
+							}
 							RoadNodeIntersection* newIntersection = ConvertNodeToIntersection(m_roadNodeClusterInRange,
 								m_intersectionNodeIndex);
-							m_currentRoadNodeCluster->m_roadNodes.clear();
+
+							if(deleteCurrentRoadNodeCluster)
+							{
+								m_currentRoadNodeCluster->m_roadNodes.clear();
+							}
 							newIntersection->AddIncomingRoadNode(m_tempNodes[m_indexOfLastPermanentNode]);
 						}
 
@@ -3669,6 +3815,11 @@ namespace gh
 
 				if(currentRoadNode != nullptr)
 				{
+					if(!currentRoadNode->AllowsForks())
+					{
+						return;
+					}
+
 					//check if this is forking from a road node or an intersection node
 					if(currentRoadNodeCluster)
 					{
