@@ -74,6 +74,7 @@ namespace
 	bool g_renderRoadNodeClusters = true;
 	bool g_renderTempNodes = true;
 	bool g_editMode = true;
+	bool g_playSimulation = false;
 }
 
 namespace gh
@@ -2115,7 +2116,8 @@ namespace gh
 		}
 
 		//update the roads and vehicles
-		if(!g_editMode)
+		if(!g_editMode
+			&& g_playSimulation)
 		{
 			if(m_roadSystem)
 			{
@@ -3681,6 +3683,7 @@ namespace gh
 					if(g_editMode)
 					{
 						initiateDrivingSystem();
+						g_playSimulation = false;
 					}
 					else
 					{
@@ -3698,6 +3701,11 @@ namespace gh
 					}
 
 					g_editMode = !g_editMode;
+					break;
+
+				case 'z':
+				case 'Z':
+					g_playSimulation = !g_playSimulation;
 					break;
 
 				case 'j':
