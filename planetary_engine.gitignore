@@ -7,6 +7,7 @@
 # Precompiled Headers
 *.gch
 *.pch
+*.ipch
 
 # Compiled Dynamic libraries
 *.so
@@ -26,3 +27,10 @@
 *.exe
 *.out
 *.app
+
+# Logs
+*.tlog
+
+# Folders
+*.Debug/*
+*.Release/*
