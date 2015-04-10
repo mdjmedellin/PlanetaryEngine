@@ -32,5 +32,8 @@
 *.tlog
 
 # Folders
-*Debug/*
-*Release/*
+*/Debug/
+*/Release/
+
+# Visual Studio Project files
+*.sdf
